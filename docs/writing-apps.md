@@ -49,7 +49,7 @@ While your app shows graphics, anything it prints still goes to the terminal, so
 
 ## The GUI toolkit
 
-`apps/include/gui.h` has what the desktop is built with: drawing rectangles and text onto a canvas, the dark and light themes, and accessibility helpers. Give every clickable thing a `struct gui_item` with a name and a role, and call `gui_announce_item` when it gets focus, so screen-reader users hear it. See `apps/desktop.c` for a full example. Also useful: `areos_mouse_event`, `areos_date_time`, `areos_setting_get`/`areos_setting_set` (the theme the user picked is `AREOS_SETTING_THEME`), and `areos_launch` to open another app.
+`apps/include/gui.h` has what the desktop is built with: drawing rectangles and text onto a canvas, the dark and light themes, and accessibility helpers. Give every clickable thing a `struct gui_item` with a name and a role, and call `gui_announce_item` when it gets focus, so screen-reader users hear it. See `apps/desktop/` for a full example (start with `desktop.h`, which explains how the parts fit together). Apps made of several files go in a folder and are listed in `FOLDER_APPS` in `apps/GNUmakefile`. Also useful: `areos_mouse_event`, `areos_date_time`, `areos_setting_get`/`areos_setting_set` (the theme the user picked is `AREOS_SETTING_THEME`), and `areos_launch` to open another app.
 
 Apps have no C library yet, so things like `printf` and `malloc` aren't available. Use the functions above instead.
 

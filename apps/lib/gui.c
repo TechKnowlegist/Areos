@@ -98,6 +98,146 @@ int gui_text_wrapped(struct gui_canvas *c, int x, int y, int max_width, const ch
     return line_y - y;
 }
 
+void gui_text_bold(struct gui_canvas *c, int x, int y, const char *text, uint32_t color, int scale) {
+    gui_text(c, x, y, text, color, scale);
+    gui_text(c, x + 1, y, text, color, scale);
+}
+
+// ---- Shapes and see-through drawing ----
+
+void gui_fill_alpha(struct gui_canvas *c, int x, int y, int w, int h, uint32_t color, int alpha) {
+    if (alpha >= 255) {
+        gui_fill(c, x, y, w, h, color);
+        return;
+    }
+    int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
+    int x1 = x + w > c->width ? c->width : x + w;
+    int y1 = y + h > c->height ? c->height : y + h;
+    for (int row = y0; row < y1; row++) {
+        uint32_t *line = c->pixels + (size_t)row * (size_t)c->width;
+        for (int col = x0; col < x1; col++) {
+            line[col] = gui_blend(line[col], color, alpha);
+        }
+    }
+}
+
+// Whole-number square root (for circles), without floating point.
+static int isqrt(int n) {
+    if (n <= 0) return 0;
+    int x = n, y = (x + 1) / 2;
+    while (y < x) {
+        x = y;
+        y = (x + n / x) / 2;
+    }
+    return x;
+}
+
+// How far in from the edge row `row` of a rounded corner starts.
+static int corner_inset(int row, int radius) {
+    int dy = radius - row;
+    return radius - isqrt(radius * radius - dy * dy);
+}
+
+void gui_rounded_alpha(struct gui_canvas *c, int x, int y, int w, int h, int radius, uint32_t color, int alpha) {
+    if (radius * 2 > h) radius = h / 2;
+    if (radius * 2 > w) radius = w / 2;
+    for (int row = 0; row < h; row++) {
+        int inset = 0;
+        if (row < radius) inset = corner_inset(row, radius);
+        else if (row >= h - radius) inset = corner_inset(h - 1 - row, radius);
+        gui_fill_alpha(c, x + inset, y + row, w - 2 * inset, 1, color, alpha);
+    }
+}
+
+void gui_rounded(struct gui_canvas *c, int x, int y, int w, int h, int radius, uint32_t color) {
+    gui_rounded_alpha(c, x, y, w, h, radius, color, 255);
+}
+
+void gui_circle(struct gui_canvas *c, int center_x, int center_y, int radius, uint32_t color) {
+    for (int dy = -radius; dy <= radius; dy++) {
+        int half = isqrt(radius * radius - dy * dy);
+        gui_fill(c, center_x - half, center_y + dy, half * 2 + 1, 1, color);
+    }
+}
+
+void gui_ring(struct gui_canvas *c, int center_x, int center_y, int radius, int thickness, uint32_t color) {
+    int inner = radius - thickness;
+    for (int dy = -radius; dy <= radius; dy++) {
+        int outer_half = isqrt(radius * radius - dy * dy);
+        int inner_half = (dy * dy < inner * inner) ? isqrt(inner * inner - dy * dy) : -1;
+        if (inner_half < 0) {
+            gui_fill(c, center_x - outer_half, center_y + dy, outer_half * 2 + 1, 1, color);
+        } else {
+            gui_fill(c, center_x - outer_half, center_y + dy, outer_half - inner_half, 1, color);
+            gui_fill(c, center_x + inner_half + 1, center_y + dy, outer_half - inner_half, 1, color);
+        }
+    }
+}
+
+void gui_line(struct gui_canvas *c, int x0, int y0, int x1, int y1, int thickness, uint32_t color) {
+    int dx = x1 > x0 ? x1 - x0 : x0 - x1, sx = x0 < x1 ? 1 : -1;
+    int dy = y1 > y0 ? y0 - y1 : y1 - y0, sy = y0 < y1 ? 1 : -1;
+    int error = dx + dy;
+    for (;;) {
+        gui_fill(c, x0 - thickness / 2, y0 - thickness / 2, thickness, thickness, color);
+        if (x0 == x1 && y0 == y1) break;
+        int e2 = 2 * error;
+        if (e2 >= dy) { error += dy; x0 += sx; }
+        if (e2 <= dx) { error += dx; y0 += sy; }
+    }
+}
+
+void gui_shadow(struct gui_canvas *c, int x, int y, int w, int h, int size) {
+    // Rings of faint darkness around the edges, fading outwards. Only the
+    // edges are drawn: the window itself covers the middle anyway.
+    for (int i = 1; i <= size; i++) {
+        int alpha = 70 * (size - i + 1) / (size * size / 2 + 1);
+        int left = x - i, top = y - i + 3, right = x + w + i - 1, bottom = y + h + i - 1 + 3;
+        gui_fill_alpha(c, left, top, right - left + 1, 1, 0x000000, alpha);
+        gui_fill_alpha(c, left, bottom, right - left + 1, 1, 0x000000, alpha);
+        gui_fill_alpha(c, left, top + 1, 1, bottom - top - 1, 0x000000, alpha);
+        gui_fill_alpha(c, right, top + 1, 1, bottom - top - 1, 0x000000, alpha);
+    }
+}
+
+void gui_blit(struct gui_canvas *to, int x, int y, const struct gui_canvas *from) {
+    int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
+    int x1 = x + from->width > to->width ? to->width : x + from->width;
+    int y1 = y + from->height > to->height ? to->height : y + from->height;
+    if (x1 <= x0) return;
+    for (int row = y0; row < y1; row++) {
+        const uint32_t *source = from->pixels + (size_t)(row - y) * (size_t)from->width + (x0 - x);
+        uint32_t *dest = to->pixels + (size_t)row * (size_t)to->width + x0;
+        for (int col = 0; col < x1 - x0; col++) {
+            dest[col] = source[col];
+        }
+    }
+}
+
+void gui_blit_scaled(struct gui_canvas *to, int x, int y, int w, int h,
+                     const struct gui_canvas *from, int alpha) {
+    if (w <= 0 || h <= 0 || alpha <= 0) return;
+    int x0 = x < 0 ? 0 : x, y0 = y < 0 ? 0 : y;
+    int x1 = x + w > to->width ? to->width : x + w;
+    int y1 = y + h > to->height ? to->height : y + h;
+    for (int row = y0; row < y1; row++) {
+        int source_y = (row - y) * from->height / h;
+        const uint32_t *source = from->pixels + (size_t)source_y * (size_t)from->width;
+        uint32_t *dest = to->pixels + (size_t)row * (size_t)to->width;
+        for (int col = x0; col < x1; col++) {
+            uint32_t pixel = source[(col - x) * from->width / w];
+            dest[col] = alpha >= 255 ? pixel : gui_blend(dest[col], pixel, alpha);
+        }
+    }
+}
+
+int gui_ease_out(int progress) {
+    if (progress <= 0) return 0;
+    if (progress >= 1000) return 1000;
+    int left = 1000 - progress;              // 1 - t
+    return 1000 - left * left / 1000 * left / 1000;  // 1 - (1 - t)^3
+}
+
 // ---- Themes ----
 // Dark: the AREOS look. Light: dark text on a soft background, with
 // deeper green and blue so they stay readable on white.
@@ -190,6 +330,9 @@ static const char *role_name(enum gui_role role) {
     case GUI_ROLE_RADIO:      return "radio button";
     case GUI_ROLE_TEXT_FIELD: return "edit text";
     case GUI_ROLE_APP:        return "app";
+    case GUI_ROLE_ICON:       return "icon";
+    case GUI_ROLE_MENU_ITEM:  return "menu item";
+    case GUI_ROLE_TASKBAR:    return "taskbar button";
     }
     return "item";
 }
@@ -202,13 +345,17 @@ void gui_announce_item(const struct gui_item *item, int position, int count, boo
     if (item->role == GUI_ROLE_RADIO) {
         gui_line_add(item->checked ? ", selected" : ", not selected");
     }
-    if (item->role == GUI_ROLE_TEXT_FIELD) {
-        if (item->value != NULL && item->value[0] != '\0') {
+    if (item->role == GUI_ROLE_TEXT_FIELD && item->value != NULL) {
+        if (item->value[0] != '\0') {
             gui_line_add(", ");
             gui_line_add(item->value);
         } else {
             gui_line_add(", blank");
         }
+    }
+    if (item->state != NULL && item->state[0] != '\0') {
+        gui_line_add(", ");
+        gui_line_add(item->state);
     }
     if (item->disabled) {
         gui_line_add(", unavailable");

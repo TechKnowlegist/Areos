@@ -1,12 +1,14 @@
 # apps/GNUmakefile - builds the AREOS apps into .arx files.
 #
 # To add an app: write apps/yourapp.c, then add "yourapp" to one of the
-# two lists below.
+# two lists below. A bigger app can be a folder instead (apps/yourapp/
+# full of .c files): add it to FOLDER_APPS as well.
 #   ELF_APPS:    .arx with ELF inside (the standard format)
 #   NATIVE_APPS: .arx in the native AREOS format (packed by tools/arxpack)
 
 ELF_APPS    := hello oops starfield desktop
 NATIVE_APPS := countdown
+FOLDER_APPS := desktop
 
 CC      := cc
 HOST_CC := cc
@@ -40,6 +42,17 @@ bin/%.app.o: %.c include/areos.h include/gui.h
 
 bin/%.elf: bin/%.app.o $(LIB) lib/app.ld
 	$(CC) $(CFLAGS) $(LDFLAGS) $< $(LIB) -o $@
+
+# Folder apps: every .c file in apps/name/ is built and linked together.
+define FOLDER_APP_RULES
+bin/$(1).elf: $$(patsubst $(1)/%.c,bin/$(1)/%.o,$$(wildcard $(1)/*.c)) $$(LIB) lib/app.ld
+	$$(CC) $$(CFLAGS) $$(LDFLAGS) $$(filter %.o,$$^) -o $$@
+
+bin/$(1)/%.o: $(1)/%.c $$(wildcard $(1)/*.h) include/areos.h include/gui.h
+	mkdir -p bin/$(1)
+	$$(CC) $$(CFLAGS) -I $(1) -c $$< -o $$@
+endef
+$(foreach app,$(FOLDER_APPS),$(eval $(call FOLDER_APP_RULES,$(app))))
 
 # ELF-inside apps: the ELF file simply gets the .arx name.
 $(addprefix bin/,$(addsuffix .arx,$(ELF_APPS))): bin/%.arx: bin/%.elf

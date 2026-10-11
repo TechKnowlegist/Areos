@@ -35,6 +35,43 @@ void gui_text_centered(struct gui_canvas *c, int center_x, int y, const char *te
 int gui_text_wrapped(struct gui_canvas *c, int x, int y, int max_width, const char *text,
                      uint32_t color, int scale);
 
+// Slightly heavier text (drawn twice, one pixel apart), for titles.
+void gui_text_bold(struct gui_canvas *c, int x, int y, const char *text, uint32_t color, int scale);
+
+// ---- Shapes and see-through drawing ----
+// `alpha` is how solid something is: 0 = invisible, 255 = fully solid.
+
+// Mix two colors: alpha 255 gives `top`, 0 gives `bottom`.
+static inline uint32_t gui_blend(uint32_t bottom, uint32_t top, int alpha) {
+    if (alpha >= 255) return top;
+    if (alpha <= 0) return bottom;
+    uint32_t r = (((top >> 16) & 0xFF) * (uint32_t)alpha + ((bottom >> 16) & 0xFF) * (uint32_t)(255 - alpha)) / 255;
+    uint32_t g = (((top >> 8) & 0xFF) * (uint32_t)alpha + ((bottom >> 8) & 0xFF) * (uint32_t)(255 - alpha)) / 255;
+    uint32_t b = ((top & 0xFF) * (uint32_t)alpha + (bottom & 0xFF) * (uint32_t)(255 - alpha)) / 255;
+    return (r << 16) | (g << 8) | b;
+}
+
+void gui_fill_alpha(struct gui_canvas *c, int x, int y, int w, int h, uint32_t color, int alpha);
+void gui_rounded(struct gui_canvas *c, int x, int y, int w, int h, int radius, uint32_t color);
+void gui_rounded_alpha(struct gui_canvas *c, int x, int y, int w, int h, int radius, uint32_t color, int alpha);
+void gui_circle(struct gui_canvas *c, int center_x, int center_y, int radius, uint32_t color);
+void gui_ring(struct gui_canvas *c, int center_x, int center_y, int radius, int thickness, uint32_t color);
+void gui_line(struct gui_canvas *c, int x0, int y0, int x1, int y1, int thickness, uint32_t color);
+
+// A soft shadow around a rectangle, for things floating above others.
+void gui_shadow(struct gui_canvas *c, int x, int y, int w, int h, int size);
+
+// Copy one canvas onto another at (x, y).
+void gui_blit(struct gui_canvas *to, int x, int y, const struct gui_canvas *from);
+
+// Copy a canvas onto another, stretched to w x h and see-through by `alpha`.
+// Used for animations (zooming and fading windows).
+void gui_blit_scaled(struct gui_canvas *to, int x, int y, int w, int h,
+                     const struct gui_canvas *from, int alpha);
+
+// Ease-out curve for animations: progress 0..1000 -> smoothed 0..1000.
+int gui_ease_out(int progress);
+
 // ---- Themes ----
 
 struct gui_theme {
@@ -61,6 +98,9 @@ enum gui_role {
     GUI_ROLE_RADIO,
     GUI_ROLE_TEXT_FIELD,
     GUI_ROLE_APP,
+    GUI_ROLE_ICON,        // a desktop icon
+    GUI_ROLE_MENU_ITEM,   // an entry in a menu (like the Start menu)
+    GUI_ROLE_TASKBAR,     // a button on the taskbar
 };
 
 struct gui_item {
@@ -70,6 +110,7 @@ struct gui_item {
     bool checked;         // radio buttons: is this the chosen one?
     bool disabled;        // shown, but can't be chosen
     const char *value;    // text fields: what's typed in it
+    const char *state;    // extra words to say, like "minimized" (or NULL)
     int x, y, w, h;       // where it is on screen
 };
 

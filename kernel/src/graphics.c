@@ -105,6 +105,15 @@ void graphics_draw(const uint32_t *pixels, uint32_t width, uint32_t height) {
 
     bool direct = screen_is_rgb();
     uint8_t *base = screen->address;
+
+    // Fast path: same size, same pixel format. Copy whole rows at once.
+    if (direct && scale == 1) {
+        for (uint32_t y = 0; y < shown_height; y++) {
+            memcpy(base + (size_t)(top + y) * screen->pitch + (size_t)left * 4,
+                   pixels + (size_t)y * width, (size_t)shown_width * 4);
+        }
+        return;
+    }
     for (uint32_t y = 0; y < shown_height; y++) {
         const uint32_t *source_row = pixels + (size_t)(y / scale) * width;
         volatile uint32_t *row = (volatile uint32_t *)(base + (size_t)(top + y) * screen->pitch) + left;

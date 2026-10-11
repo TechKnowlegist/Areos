@@ -33,7 +33,33 @@ static bool serial_try_get_code(uint8_t *out) {
                 return true;
             }
             if ((second == '[' || second == 'O') && serial_next_byte(&third)) {
+                // "Esc [ 15 ~" style: a number then a tilde (F5-F12, Home, Delete...).
+                if (second == '[' && third >= '0' && third <= '9') {
+                    int number = third - '0';
+                    char digit;
+                    while (serial_next_byte(&digit) && digit >= '0' && digit <= '9') {
+                        number = number * 10 + (digit - '0');
+                    }
+                    switch (number) {
+                    case 1: case 7: *out = KEY_HOME;      return true;
+                    case 4: case 8: *out = KEY_END;       return true;
+                    case 3:         *out = KEY_DELETE;    return true;
+                    case 5:         *out = KEY_PAGE_UP;   return true;
+                    case 6:         *out = KEY_PAGE_DOWN; return true;
+                    case 15:        *out = KEY_F1 + 4;    return true;  // F5
+                    case 17:        *out = KEY_F1 + 5;    return true;  // F6
+                    case 18:        *out = KEY_F1 + 6;    return true;
+                    case 19:        *out = KEY_F1 + 7;    return true;
+                    case 20:        *out = KEY_F1 + 8;    return true;
+                    case 21:        *out = KEY_F1 + 9;    return true;  // F10
+                    case 23:        *out = KEY_F1 + 10;   return true;
+                    case 24:        *out = KEY_F1 + 11;   return true;  // F12
+                    default:        continue;
+                    }
+                }
                 switch (third) {
+                case 'H': *out = KEY_HOME; return true;
+                case 'F': *out = KEY_END;  return true;
                 case 'A': *out = KEY_UP;    return true;
                 case 'B': *out = KEY_DOWN;  return true;
                 case 'C': *out = KEY_RIGHT; return true;

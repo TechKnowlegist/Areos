@@ -37,6 +37,7 @@ The goals:
 Later:
 - [x] Setup screens (welcome, name, language, dark/light, accessibility)
 - [x] Desktop and GUI, first version (app tiles, windows, mouse, clock)
+- [x] Real desktop: space wallpapers, taskbar, Start menu, movable windows, animations, Calculator and Notes
 - [ ] Saving settings to a disk (right now they last until AREOS turns off)
 - [ ] Built-in screen reader (sound driver + speech engine). Focus and mouse hover are already described in text.
 
@@ -49,14 +50,20 @@ AREOS runs `.arx` programs, each walled off in its own memory so a crashing app 
 
 ## Desktop
 
-AREOS starts with a few setup screens, then opens the desktop: your apps as tiles, plus Settings, About, Terminal and Turn off. Pressing Enter through setup keeps the defaults (dark mode, English, detailed descriptions).
+AREOS starts with a few setup screens, then opens the desktop: a space wallpaper with your apps as icons, a taskbar along the bottom with the Start button and a clock, and windows you can move, minimize and close. Pressing Enter through setup keeps the defaults (dark mode, English, detailed descriptions).
 
-- **Tab** or **arrow keys**: move. **Shift+Tab**: move back.
-- **Space**: choose. **Enter**: choose (and, during setup, go to the next page).
-- **Escape**: go back, or close a window.
+Built in: **Calculator**, **Notes**, **Settings** (dark or light mode, three wallpapers: Nebula, Red planet, Plain) and **About AREOS**. Apps like Starfield open full screen, and the desktop comes back when they finish.
+
+The desktop has areas: the desktop icons, the taskbar, the Start menu and the front window.
+
+- **F3** or the **Windows key**: open or close the Start menu.
+- **F6**: move to the next area. **Shift+F6**: the one before.
+- **Tab** or **arrow keys**: move. **Shift+Tab**: move back. **Home**/**End**: first/last item.
+- **Enter** or **Space**: open or choose.
+- **Escape**: close the Start menu, or the front window.
 - **F1**: hear the keys. **F2**: hear where you are.
 - **Letters**: jump to the next item starting with that letter.
-- The **mouse** works too: click tiles and buttons, drag windows by their title bar.
+- The **mouse** works too: double-click desktop icons, click everything else, drag windows by their title bar, click a taskbar button to bring a window back.
 
 To skip the desktop, pick **AREOS (text only)** in the boot menu. At the command line, `desktop` opens it again and `setup` reruns the setup screens.
 

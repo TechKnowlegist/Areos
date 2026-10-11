@@ -40,6 +40,8 @@
 #define AREOS_SETTING_THEME       1   // 0 = dark, 1 = light
 #define AREOS_SETTING_LANGUAGE    2   // 0 = English
 #define AREOS_SETTING_VERBOSITY   3   // 0 = detailed announcements, 1 = brief
+#define AREOS_SETTING_WALLPAPER   4   // 0 = nebula, 1 = red planet, 2 = plain
+#define AREOS_SETTING_RETURN_TO   5   // desktop: which app it opened (+1), to come back to
 #define AREOS_SETTING_NAME_FIRST  8   // 8-11: the user's name, 8 letters per setting
 
 // The AREOS colors, so programs can match the system's look.
@@ -61,6 +63,12 @@
 #define AREOS_KEY_CTRL       0x84
 #define AREOS_KEY_SHIFT      0x85
 #define AREOS_KEY_ALT        0x86
+#define AREOS_KEY_SUPER      0x87   // the Windows key
+#define AREOS_KEY_HOME       0x88
+#define AREOS_KEY_END        0x89
+#define AREOS_KEY_DELETE     0x8A
+#define AREOS_KEY_PAGE_UP    0x8B
+#define AREOS_KEY_PAGE_DOWN  0x8C
 #define AREOS_KEY_F1         0x90   // F1 to F12 are 0x90 to 0x9B
 
 static inline uint64_t areos_syscall3(uint64_t number, uint64_t arg1, uint64_t arg2, uint64_t arg3) {

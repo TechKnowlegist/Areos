@@ -28,6 +28,12 @@
 #define KEY_CTRL       0x84
 #define KEY_SHIFT      0x85
 #define KEY_ALT        0x86
+#define KEY_SUPER      0x87   // the Windows key
+#define KEY_HOME       0x88
+#define KEY_END        0x89
+#define KEY_DELETE     0x8A
+#define KEY_PAGE_UP    0x8B
+#define KEY_PAGE_DOWN  0x8C
 #define KEY_F1         0x90   // F1 to F12 are 0x90 to 0x9B
 #define KEY_BACK_TAB   0xA0   // only used inside input.c (terminal Shift+Tab)
 

@@ -33,6 +33,13 @@
 #define SC_EXT_LEFT    0x4B
 #define SC_EXT_RIGHT   0x4D
 #define SC_EXT_DOWN    0x50
+#define SC_EXT_HOME    0x47
+#define SC_EXT_END     0x4F
+#define SC_EXT_DELETE  0x53
+#define SC_EXT_PAGE_UP 0x49
+#define SC_EXT_PAGE_DN 0x51
+#define SC_EXT_SUPER_L 0x5B   // left Windows key
+#define SC_EXT_SUPER_R 0x5C   // right Windows key
 
 // Scancode -> character, for a US keyboard layout. 0 means "not a character".
 static const char keymap_normal[128] = {
@@ -99,6 +106,13 @@ static uint8_t key_for_scancode(uint8_t scancode, bool extended) {
         case SC_EXT_LEFT:  return KEY_LEFT;
         case SC_EXT_RIGHT: return KEY_RIGHT;
         case SC_EXT_ENTER: return KEY_ENTER;
+        case SC_EXT_HOME:  return KEY_HOME;
+        case SC_EXT_END:   return KEY_END;
+        case SC_EXT_DELETE: return KEY_DELETE;
+        case SC_EXT_PAGE_UP: return KEY_PAGE_UP;
+        case SC_EXT_PAGE_DN: return KEY_PAGE_DOWN;
+        case SC_EXT_SUPER_L:
+        case SC_EXT_SUPER_R: return KEY_SUPER;
         case SC_CTRL:      return KEY_CTRL;   // right Ctrl
         case SC_ALT:       return KEY_ALT;    // right Alt
         default:           return 0;          // a key we don't use yet
