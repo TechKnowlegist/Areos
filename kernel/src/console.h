@@ -31,7 +31,8 @@ void console_clear(void);
 // Change the color used for the text printed after this.
 void console_set_color(uint32_t color);
 
-// Print one character. Understands '\n' for a new line.
+// Print one character. Understands '\n' (new line), '\b' (backspace)
+// and '\t' (tab).
 void console_putc(char c);
 
 // Print a whole string.

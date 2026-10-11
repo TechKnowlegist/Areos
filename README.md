@@ -26,7 +26,7 @@ The goals:
 
 - [x] Boots in QEMU
 - [x] Print text
-- [ ] Keyboard input
+- [x] Keyboard input
 - [ ] Shell
 - [ ] Memory management
 - [ ] Timer + interrupts

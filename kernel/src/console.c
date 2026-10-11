@@ -102,16 +102,42 @@ void console_set_color(uint32_t color) {
     text_color = color;
 }
 
+// The blinking-line cursor isn't blinking yet (no timer until step 5),
+// so it's just an underscore showing where the next letter will go.
+static void draw_cursor(void) {
+    draw_char('_', cursor_col, cursor_row);
+}
+
+static void erase_cursor(void) {
+    draw_char(' ', cursor_col, cursor_row);
+}
+
 void console_putc(char c) {
+    erase_cursor();
+
     if (c == '\n') {
         new_line();
-        return;
+    } else if (c == '\b') {
+        // Backspace: step back one letter and blank it out.
+        if (cursor_col > 0) {
+            cursor_col--;
+            draw_char(' ', cursor_col, cursor_row);
+        }
+    } else if (c == '\t') {
+        // Tab: jump forward to the next multiple of 4 columns.
+        do {
+            console_putc(' ');
+        } while (cursor_col % 4 != 0);
+        return;  // the spaces already redrew the cursor
+    } else {
+        draw_char(c, cursor_col, cursor_row);
+        cursor_col++;
+        if (cursor_col >= total_cols) {
+            new_line();
+        }
     }
-    draw_char(c, cursor_col, cursor_row);
-    cursor_col++;
-    if (cursor_col >= total_cols) {
-        new_line();
-    }
+
+    draw_cursor();
 }
 
 void console_print(const char *text) {

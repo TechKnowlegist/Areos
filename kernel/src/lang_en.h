@@ -12,6 +12,8 @@
 #define STR_DEV_WARNING_1   "DEVELOPMENT BUILD: things are broken."
 #define STR_DEV_WARNING_2   "Do NOT install on a real machine. Use an emulator."
 #define STR_REAL_MACHINE    "If you're seeing this on a real machine, that's not good."
-#define STR_KERNEL_ALIVE    "Kernel is alive. Nothing else to do yet."
+#define STR_KERNEL_ALIVE    "Kernel is alive."
+#define STR_TYPE_SOMETHING  "Type something! (No commands yet - that's the next step.)"
+#define STR_PROMPT          "> "
 
 #endif
