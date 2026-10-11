@@ -5,6 +5,7 @@
 // "cls" all do the same job, and people (and AIs) coming from either
 // world can just type what they already know.
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include "shell.h"
@@ -14,6 +15,7 @@
 #include "io.h"
 #include "cpu.h"
 #include "heap.h"
+#include "timer.h"
 #include "pmm.h"
 #include "panic.h"
 #include "lang_en.h"
@@ -157,8 +159,58 @@ static void command_memtest(const char *args) {
 }
 
 static void command_crashtest(const char *args) {
-    (void)args;
+    if (text_equal_ignore_case(args, "cpu")) {
+        // Read from an address that doesn't exist. The CPU itself will
+        // stop us with a "page fault", which lands on the crash screen.
+        volatile uint64_t *nowhere = (volatile uint64_t *)0xDEAD0000;
+        (void)*nowhere;
+    }
     PANIC(STR_CRASH_REASON);
+}
+
+static void command_uptime(const char *args) {
+    (void)args;
+    uint64_t seconds = timer_ms() / 1000;
+    console_print(STR_UPTIME_1);
+    if (seconds >= 3600) {
+        console_print_number(seconds / 3600);
+        console_print(STR_UPTIME_HOURS);
+    }
+    if (seconds >= 60) {
+        console_print_number((seconds / 60) % 60);
+        console_print(STR_UPTIME_MINUTES);
+    }
+    console_print_number(seconds % 60);
+    console_print(STR_UPTIME_SECONDS "\n");
+}
+
+// Read a whole number from text like "42". Returns false if it isn't one.
+static bool parse_number(const char *text, uint64_t *out) {
+    if (*text == '\0') {
+        return false;
+    }
+    uint64_t value = 0;
+    for (; *text != '\0'; text++) {
+        if (*text < '0' || *text > '9' || value > 100000000) {
+            return false;
+        }
+        value = value * 10 + (uint64_t)(*text - '0');
+    }
+    *out = value;
+    return true;
+}
+
+#define WAIT_MAX_SECONDS 3600
+
+static void command_wait(const char *args) {
+    uint64_t seconds;
+    if (!parse_number(args, &seconds) || seconds > WAIT_MAX_SECONDS) {
+        console_set_color(COLOR_WARNING);
+        console_print(STR_WAIT_USAGE "\n");
+        return;
+    }
+    timer_sleep_ms(seconds * 1000);
+    console_print(STR_WAIT_DONE "\n");
 }
 
 // ---- The command list ----
@@ -174,6 +226,8 @@ static const struct command commands[] = {
     { "memory",  { "mem", "free" },                 STR_CMD_MEMORY_SHORT,  STR_CMD_MEMORY_LONG,  command_memory },
     { "memtest", { 0 },                             STR_CMD_MEMTEST_SHORT, STR_CMD_MEMTEST_LONG, command_memtest },
     { "crashtest", { 0 },                           STR_CMD_CRASH_SHORT,   STR_CMD_CRASH_LONG,   command_crashtest },
+    { "uptime",  { 0 },                             STR_CMD_UPTIME_SHORT,  STR_CMD_UPTIME_LONG,  command_uptime },
+    { "wait",    { "sleep", "timeout" },            STR_CMD_WAIT_SHORT,    STR_CMD_WAIT_LONG,    command_wait },
     { "doom",    { 0 },                             STR_CMD_DOOM_SHORT,    STR_CMD_DOOM_LONG,    command_doom },
 };
 
@@ -252,11 +306,30 @@ static void command_help(const char *args) {
 
 // ---- Reading and running a line ----
 
+#define CURSOR_BLINK_MS 500
+
+// Wait for a key, blinking the cursor while we wait.
+static char wait_for_key(void) {
+    bool cursor_on = true;
+    uint64_t next_blink = timer_ms() + CURSOR_BLINK_MS;
+    char c;
+    while (!keyboard_try_get_char(&c)) {
+        if (timer_ms() >= next_blink) {
+            cursor_on = !cursor_on;
+            console_blink_cursor(cursor_on);
+            next_blink = timer_ms() + CURSOR_BLINK_MS;
+        }
+        asm volatile ("hlt");  // rest until the next interrupt (key or tick)
+    }
+    console_blink_cursor(true);  // always show it right after a key press
+    return c;
+}
+
 // Read one line of typing into buffer. Handles Backspace. Returns on Enter.
 static void read_line(char *buffer) {
     size_t length = 0;
     for (;;) {
-        char c = keyboard_get_char();
+        char c = wait_for_key();
         if (c == KEY_ENTER) {
             console_putc('\n');
             buffer[length] = '\0';

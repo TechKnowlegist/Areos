@@ -15,6 +15,7 @@
 #define STR_REAL_MACHINE    "If you're seeing this on a real machine, that's not good."
 #define STR_BOOT_MEMORY_1   "Memory: "
 #define STR_BOOT_MEMORY_2   " MB ready."
+#define STR_BOOT_TIMER      "Timer: ticking 1000 times a second."
 #define STR_SHELL_BANNER    "Delete everything or fix everything."
 #define STR_SHELL_HINT      "Type help to get started."
 
@@ -57,7 +58,13 @@
 #define STR_CMD_MEMTEST_LONG    "Makes a few thousand allocations of different sizes, fills them, checks nothing got mixed up, then frees them all."
 
 #define STR_CMD_CRASH_SHORT     "Show the crash screen"
-#define STR_CMD_CRASH_LONG      "Crashes AREOS on purpose so you can see the crash screen. You'll need to restart QEMU afterwards."
+#define STR_CMD_CRASH_LONG      "Crashes AREOS on purpose so you can see the crash screen. Type 'crashtest cpu' to make the CPU itself trip over a bad memory address instead. You'll need to restart QEMU afterwards."
+
+#define STR_CMD_UPTIME_SHORT    "How long AREOS has been running"
+#define STR_CMD_UPTIME_LONG     "Shows how long it's been since AREOS started, using the timer that ticks 1000 times a second."
+
+#define STR_CMD_WAIT_SHORT      "Pause for some seconds"
+#define STR_CMD_WAIT_LONG       "Waits for the number of seconds you give it, then carries on. Example: wait 3"
 
 // ---- Command output ----
 #define STR_ABOUT_TEXT      "AREOS v0.1 - a hobby operating system built from scratch.\n" \
@@ -76,6 +83,12 @@
 #define STR_MEMTEST_RUNNING "Testing memory..."
 #define STR_MEMTEST_PASSED  "Memory test passed. Every byte was where it should be."
 #define STR_MEMTEST_NO_MEM  "Memory test couldn't get enough memory to run."
+#define STR_UPTIME_1        "Running for "
+#define STR_UPTIME_HOURS    " h "
+#define STR_UPTIME_MINUTES  " min "
+#define STR_UPTIME_SECONDS  " s"
+#define STR_WAIT_USAGE      "Tell me how many seconds, like: wait 3"
+#define STR_WAIT_DONE       "Done waiting."
 #define STR_CRASH_REASON    "You asked for a crash with the crashtest command. Everything is fine!"
 
 // ---- Crash screen ----
@@ -84,6 +97,17 @@
 #define STR_PANIC_DETAILS   "Technical details (stays on this screen, nothing is sent anywhere):"
 #define STR_PANIC_ERROR     "Error: "
 #define STR_PANIC_WHERE     "Where: "
+#define STR_PANIC_BAD_ADDRESS "Tried to use address: "
+#define STR_PANIC_REGISTERS "CPU registers at the moment it happened:"
+#define STR_CPU_ERROR_NAMES { \
+    "Divided by zero", "Debug", "Hardware emergency (NMI)", "Breakpoint", \
+    "Number too big (overflow)", "Out of bounds", "Unknown instruction", "Math chip not available", \
+    "Double fault (an error while handling an error)", "Coprocessor segment overrun", "Bad task state", "Segment missing", \
+    "Stack problem", "General protection fault (not allowed)", "Page fault (bad memory address)", "Reserved (15)", \
+    "Math error (x87)", "Misaligned memory access", "Hardware failure (machine check)", "Math error (SIMD)", \
+    "Virtualization error", "Control protection", "Reserved (22)", "Reserved (23)", \
+    "Reserved (24)", "Reserved (25)", "Reserved (26)", "Reserved (27)", \
+    "Hypervisor injection", "VMM communication", "Security error", "Reserved (31)" }
 #define STR_PANIC_HINT      "Restart to try again. If it keeps happening, these details will help fix it."
 
 #endif

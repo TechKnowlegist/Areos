@@ -209,3 +209,22 @@ void console_hide_cursor(void) {
     erase_cursor();
     cursor_visible = false;
 }
+
+void console_blink_cursor(bool on) {
+    if (!cursor_visible) {
+        return;  // the cursor has been hidden for good (crash screen)
+    }
+    if (on) {
+        draw_cursor();
+    } else {
+        draw_char(' ', cursor_col, cursor_row);
+    }
+}
+
+void console_print_hex(uint64_t number) {
+    const char *hex_digits = "0123456789ABCDEF";
+    console_print("0x");
+    for (int shift = 60; shift >= 0; shift -= 4) {
+        console_putc(hex_digits[(number >> shift) & 0xF]);
+    }
+}

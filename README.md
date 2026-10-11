@@ -29,7 +29,7 @@ The goals:
 - [x] Keyboard input
 - [x] Shell
 - [x] Memory management
-- [ ] Timer + interrupts
+- [x] Timer + interrupts
 - [ ] Program loader
 - [ ] Graphics mode
 - [ ] Doom

@@ -17,4 +17,10 @@
 __attribute__((noreturn))
 void kernel_panic(const char *reason, const char *file, int line);
 
+// The crash screen for CPU errors (like a bad memory address), with the
+// CPU's registers. Called by the interrupt code, not directly.
+struct interrupt_frame;
+__attribute__((noreturn))
+void kernel_panic_cpu(struct interrupt_frame *frame);
+
 #endif

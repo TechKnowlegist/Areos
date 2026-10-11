@@ -6,6 +6,7 @@
 #ifndef AREOS_CONSOLE_H
 #define AREOS_CONSOLE_H
 
+#include <stdbool.h>
 #include <stdint.h>
 #include <limine.h>
 
@@ -41,7 +42,14 @@ void console_print(const char *text);
 // Stop showing the _ cursor (used by the crash screen).
 void console_hide_cursor(void);
 
+// Draw (on = true) or blank (on = false) the cursor, for blinking.
+void console_blink_cursor(bool on);
+
 // Print a whole number, like 2048.
 void console_print_number(uint64_t number);
+
+// Print a number in hexadecimal (base 16), like 0x00000000DEADBEEF.
+// Memory addresses are usually written this way.
+void console_print_hex(uint64_t number);
 
 #endif

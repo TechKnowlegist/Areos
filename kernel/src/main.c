@@ -7,7 +7,12 @@
 #include "shell.h"
 #include "pmm.h"
 #include "heap.h"
+#include "vmm.h"
 #include "panic.h"
+#include "idt.h"
+#include "pic.h"
+#include "timer.h"
+#include "keyboard.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -106,12 +111,21 @@ void kmain(void) {
         PANIC("The bootloader didn't tell us about memory");
     }
     pmm_init(memmap_request.response, hhdm_request.response->offset);
+    vmm_init(hhdm_request.response->offset);
     heap_init();
+
+    // Set up interrupts: the CPU's error handling, the timer, the keyboard.
+    idt_init();
+    pic_init();
+    timer_init();
+    keyboard_init();
+    interrupts_enable();
 
     console_set_color(COLOR_DIM);
     console_print(STR_BOOT_MEMORY_1);
     console_print_number(pmm_total_bytes() / (1024 * 1024));
-    console_print(STR_BOOT_MEMORY_2 "\n\n");
+    console_print(STR_BOOT_MEMORY_2 "\n");
+    console_print(STR_BOOT_TIMER "\n\n");
 
     console_set_color(COLOR_GREEN);
     console_print(STR_SHELL_BANNER "\n");

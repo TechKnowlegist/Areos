@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "keyboard.h"
 #include "io.h"
+#include "idt.h"
 
 #define KEYBOARD_DATA_PORT    0x60  // where scancodes arrive
 #define KEYBOARD_STATUS_PORT  0x64  // tells us if a scancode is waiting
@@ -41,55 +42,90 @@ static bool shift_held = false;
 static bool caps_lock_on = false;
 static bool next_is_extended = false;
 
-// Wait for the keyboard to send one scancode, then return it.
-static uint8_t read_scancode(void) {
-    while ((inb(KEYBOARD_STATUS_PORT) & STATUS_OUTPUT_FULL) == 0) {
-        // nothing yet, keep waiting
+// Scancodes waiting to be turned into characters. The keyboard interrupt
+// adds to the end; keyboard_try_get_char takes from the front. It's a
+// "ring": when the end reaches the last slot it wraps back to the first.
+#define BUFFER_SIZE 128
+static volatile uint8_t buffer[BUFFER_SIZE];
+static volatile uint32_t buffer_head = 0;  // next slot to read
+static volatile uint32_t buffer_tail = 0;  // next slot to write
+
+// Runs every time a key goes down or up (hardware interrupt 1).
+static void on_keyboard_interrupt(struct interrupt_frame *frame) {
+    (void)frame;
+    uint8_t scancode = inb(KEYBOARD_DATA_PORT);
+    uint32_t next = (buffer_tail + 1) % BUFFER_SIZE;
+    if (next != buffer_head) {  // if the buffer is full, drop the key
+        buffer[buffer_tail] = scancode;
+        buffer_tail = next;
     }
-    return inb(KEYBOARD_DATA_PORT);
+}
+
+void keyboard_init(void) {
+    // Throw away anything left over from before AREOS started.
+    while (inb(KEYBOARD_STATUS_PORT) & STATUS_OUTPUT_FULL) {
+        inb(KEYBOARD_DATA_PORT);
+    }
+    irq_set_handler(IRQ_KEYBOARD, on_keyboard_interrupt);
 }
 
 static bool is_letter(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
 }
 
-char keyboard_get_char(void) {
-    for (;;) {
-        uint8_t scancode = read_scancode();
-
-        if (scancode == SCANCODE_EXTENDED) {
-            next_is_extended = true;  // arrows etc. - not handled yet
-            continue;
-        }
-        if (next_is_extended) {
-            next_is_extended = false;
-            continue;
-        }
-
-        bool released = (scancode & SCANCODE_RELEASED) != 0;
-        uint8_t key = scancode & ~SCANCODE_RELEASED;
-
-        if (key == SCANCODE_LEFT_SHIFT || key == SCANCODE_RIGHT_SHIFT) {
-            shift_held = !released;
-            continue;
-        }
-        if (released) {
-            continue;  // we only care about key presses, not releases
-        }
-        if (key == SCANCODE_CAPS_LOCK) {
-            caps_lock_on = !caps_lock_on;
-            continue;
-        }
-
-        char c = shift_held ? keymap_shift[key] : keymap_normal[key];
-        if (c == 0) {
-            continue;  // a key we don't understand yet
-        }
-
-        // Caps Lock flips letters only (not numbers or symbols).
-        if (caps_lock_on && is_letter(c)) {
-            c = (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : (char)(c - 'A' + 'a');
-        }
-        return c;
+// Turn one scancode into a character, or 0 if it doesn't make one
+// (like releasing a key, or pressing Shift on its own).
+static char translate(uint8_t scancode) {
+    if (scancode == SCANCODE_EXTENDED) {
+        next_is_extended = true;  // arrows etc. - not handled yet
+        return 0;
     }
+    if (next_is_extended) {
+        next_is_extended = false;
+        return 0;
+    }
+
+    bool released = (scancode & SCANCODE_RELEASED) != 0;
+    uint8_t key = scancode & ~SCANCODE_RELEASED;
+
+    if (key == SCANCODE_LEFT_SHIFT || key == SCANCODE_RIGHT_SHIFT) {
+        shift_held = !released;
+        return 0;
+    }
+    if (released) {
+        return 0;  // we only care about key presses, not releases
+    }
+    if (key == SCANCODE_CAPS_LOCK) {
+        caps_lock_on = !caps_lock_on;
+        return 0;
+    }
+
+    char c = shift_held ? keymap_shift[key] : keymap_normal[key];
+
+    // Caps Lock flips letters only (not numbers or symbols).
+    if (c != 0 && caps_lock_on && is_letter(c)) {
+        c = (c >= 'a' && c <= 'z') ? (char)(c - 'a' + 'A') : (char)(c - 'A' + 'a');
+    }
+    return c;
+}
+
+bool keyboard_try_get_char(char *out) {
+    while (buffer_head != buffer_tail) {
+        uint8_t scancode = buffer[buffer_head];
+        buffer_head = (buffer_head + 1) % BUFFER_SIZE;
+        char c = translate(scancode);
+        if (c != 0) {
+            *out = c;
+            return true;
+        }
+    }
+    return false;
+}
+
+char keyboard_get_char(void) {
+    char c;
+    while (!keyboard_try_get_char(&c)) {
+        asm volatile ("hlt");  // rest until the next interrupt
+    }
+    return c;
 }
