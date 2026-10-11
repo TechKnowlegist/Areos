@@ -1,5 +1,6 @@
 // console.c - AREOS text console.
 
+#include <stdbool.h>
 #include <stddef.h>
 #include "console.h"
 #include "font.h"
@@ -76,12 +77,32 @@ static void draw_char(char c, uint64_t col, uint64_t row) {
     }
 }
 
+// Move every line of text up by one, and blank the bottom line.
+static void scroll_up(void) {
+    volatile uint32_t *pixels = screen->address;
+    uint64_t pixels_per_row = screen->pitch / 4;
+    uint64_t text_top = CONSOLE_MARGIN;
+    uint64_t text_bottom = CONSOLE_MARGIN + total_rows * CELL_HEIGHT;
+    uint64_t text_left = CONSOLE_MARGIN;
+    uint64_t text_width = total_cols * CELL_WIDTH;
+
+    for (uint64_t y = text_top; y + CELL_HEIGHT < text_bottom; y++) {
+        volatile uint32_t *to = pixels + y * pixels_per_row + text_left;
+        volatile uint32_t *from = pixels + (y + CELL_HEIGHT) * pixels_per_row + text_left;
+        for (uint64_t x = 0; x < text_width; x++) {
+            to[x] = from[x];
+        }
+    }
+    fill_rect(text_left, text_bottom - CELL_HEIGHT, text_width, CELL_HEIGHT, COLOR_BACKGROUND);
+}
+
 static void new_line(void) {
     cursor_col = 0;
     cursor_row++;
     if (cursor_row >= total_rows) {
-        // No scrolling yet: when the screen fills up, start again at the top.
-        console_clear();
+        // Screen is full: push everything up one line, stay on the last line.
+        scroll_up();
+        cursor_row = total_rows - 1;
     }
 }
 
@@ -142,6 +163,27 @@ void console_putc(char c) {
 
 void console_print(const char *text) {
     for (size_t i = 0; text[i] != '\0'; i++) {
-        console_putc(text[i]);
+        char c = text[i];
+
+        // Word wrap: at the start of a word, if the whole word won't fit
+        // on this line (but would fit on a fresh one), move down first.
+        bool word_start = (c != ' ' && c != '\n') && (i == 0 || text[i - 1] == ' ');
+        if (word_start && cursor_col > 0) {
+            uint64_t word_length = 0;
+            while (text[i + word_length] != '\0' && text[i + word_length] != ' '
+                   && text[i + word_length] != '\n') {
+                word_length++;
+            }
+            if (cursor_col + word_length > total_cols && word_length <= total_cols) {
+                console_putc('\n');
+            }
+        }
+
+        // Don't start a wrapped line with a leftover space.
+        if (c == ' ' && cursor_col == 0 && i > 0 && text[i - 1] != '\n') {
+            continue;
+        }
+
+        console_putc(c);
     }
 }

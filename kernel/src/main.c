@@ -4,7 +4,7 @@
 #include <limine.h>
 #include "console.h"
 #include "lang_en.h"
-#include "keyboard.h"
+#include "shell.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -83,36 +83,10 @@ void kmain(void) {
     console_print(STR_REAL_MACHINE "\n\n");
 
     console_set_color(COLOR_GREEN);
-    console_print(STR_KERNEL_ALIVE "\n");
+    console_print(STR_SHELL_BANNER "\n");
     console_set_color(COLOR_DIM);
-    console_print(STR_TYPE_SOMETHING "\n\n");
+    console_print(STR_SHELL_HINT "\n\n");
 
-    // Echo whatever is typed back onto the screen, forever.
-    console_set_color(COLOR_GREEN);
-    console_print(STR_PROMPT);
-    console_set_color(COLOR_BLUE);
-
-    uint64_t typed_on_this_line = 0;  // so Backspace can't eat the prompt
-
-    for (;;) {
-        char c = keyboard_get_char();
-
-        if (c == KEY_ENTER) {
-            console_putc('\n');
-            console_set_color(COLOR_GREEN);
-            console_print(STR_PROMPT);
-            console_set_color(COLOR_BLUE);
-            typed_on_this_line = 0;
-        } else if (c == KEY_BACKSPACE) {
-            if (typed_on_this_line > 0) {
-                console_putc('\b');
-                typed_on_this_line--;
-            }
-        } else if (c == '\t') {
-            // Tab will mean something once the shell exists. Ignore it for now.
-        } else {
-            console_putc(c);
-            typed_on_this_line++;
-        }
-    }
+    // Hand control to the command line. It never comes back.
+    shell_run();
 }
