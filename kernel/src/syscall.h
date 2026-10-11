@@ -31,7 +31,8 @@
 #define SYS_APP_NAME         15  // app_name(index, buffer, size) - name of app number `index`
 #define SYS_LAUNCH           16  // launch(name, come_back)    - run an app after this one exits
 #define SYS_POWER            17  // power(0 = off, 1 = restart)
-#define SYS_COUNT            18
+#define SYS_SPEECH           18  // speech(0 = stop talking, 1 = say text at pointer)
+#define SYS_COUNT            19
 
 struct interrupt_frame;
 void syscall_dispatch(struct interrupt_frame *frame);

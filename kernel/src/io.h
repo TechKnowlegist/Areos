@@ -23,4 +23,21 @@ static inline void outw(uint16_t port, uint16_t value) {
     asm volatile ("outw %0, %1" : : "a"(value), "Nd"(port));
 }
 
+static inline uint16_t inw(uint16_t port) {
+    uint16_t value;
+    asm volatile ("inw %1, %0" : "=a"(value) : "Nd"(port));
+    return value;
+}
+
+// Four bytes at once.
+static inline uint32_t inl(uint16_t port) {
+    uint32_t value;
+    asm volatile ("inl %1, %0" : "=a"(value) : "Nd"(port));
+    return value;
+}
+
+static inline void outl(uint16_t port, uint32_t value) {
+    asm volatile ("outl %0, %1" : : "a"(value), "Nd"(port));
+}
+
 #endif

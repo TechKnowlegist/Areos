@@ -1,10 +1,12 @@
 // input.c - typing, from either the keyboard or the terminal.
 
 #include <stdint.h>
+#include "thread.h"
 #include "input.h"
 #include "serial.h"
 #include "console.h"
 #include "timer.h"
+#include "speech.h"
 
 #define CURSOR_BLINK_MS 500
 #define ESCAPE_CODE_WAIT 2000  // how many times to check for the rest of an arrow code
@@ -23,7 +25,7 @@ static bool serial_next_byte(char *out) {
 // Read one key from the terminal and translate it into an AREOS key code.
 // Terminals send Enter as '\r', Backspace as 127 (or 8), and arrow keys
 // as three bytes: Escape, '[', then A/B/C/D.
-static bool serial_try_get_code(uint8_t *out) {
+static bool serial_read_code(uint8_t *out) {
     char c;
     while (serial_try_getc(&c)) {
         if (c == 0x1B) {
@@ -90,6 +92,15 @@ static bool serial_try_get_code(uint8_t *out) {
     return false;
 }
 
+// A key from the terminal also stops AREOS speaking (like a key press does).
+static bool serial_try_get_code(uint8_t *out) {
+    if (serial_read_code(out)) {
+        speech_interrupt();
+        return true;
+    }
+    return false;
+}
+
 bool input_try_get_key(char *out) {
     if (keyboard_try_get_char(out)) {
         return true;
@@ -114,7 +125,9 @@ char input_wait_key(bool blink_cursor) {
             console_blink_cursor(cursor_on);
             next_blink = timer_ms() + CURSOR_BLINK_MS;
         }
-        asm volatile ("hlt");  // rest until the next interrupt (key or tick)
+        // Rest until the next interrupt. The terminal is checked every few ms,
+        // so don't rest longer than that.
+        thread_idle(timer_ms() + 10);
     }
     if (blink_cursor) {
         console_blink_cursor(true);  // always show it right after a key press

@@ -24,6 +24,10 @@ void *pmm_alloc_pages(size_t count);
 void pmm_free_pages(void *pointer, size_t count);
 
 // Totals, in bytes.
+// The real (physical) address of memory from pmm_alloc_pages, for devices
+// that read memory by themselves, like the sound card.
+uint64_t pmm_physical_address(const void *pointer);
+
 uint64_t pmm_total_bytes(void);
 uint64_t pmm_free_bytes(void);
 

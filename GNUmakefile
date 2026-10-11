@@ -10,6 +10,15 @@ ARCH := x86_64
 # Default user QEMU flags. These are appended to the QEMU command calls.
 QEMUFLAGS := -m 2G -serial stdio -rtc base=localtime
 
+# Sound, so AREOS can talk: an AC'97 sound card, played through the first
+# sound system this QEMU knows (PulseAudio works on Windows with WSL).
+# Pick one yourself with, for example: make run-bios AUDIO=alsa
+override QEMU_AUDIO_DRIVERS := $(shell qemu-system-$(ARCH) -audiodev help 2>/dev/null)
+AUDIO := $(firstword $(foreach d,pa pipewire sdl coreaudio dsound alsa oss,$(filter $(d),$(QEMU_AUDIO_DRIVERS))))
+ifneq ($(AUDIO),)
+    QEMUFLAGS += -audiodev $(AUDIO),id=sound -device AC97,audiodev=sound
+endif
+
 # Internal architecture specific variables that should not be changed by the
 # user. x86_64 images get an MBR, the most portable form for BIOS and UEFI.
 override XORRISO_BIOS_FLAGS :=
@@ -135,8 +144,14 @@ limine-binary/limine: limine-binary.tar.gz
 kernel/.deps-obtained:
 	./kernel/get-deps
 
+# The speech engine (Flite), built on its own because it needs floating
+# point maths; the kernel links it in.
+.PHONY: speech
+speech: kernel/.deps-obtained
+	$(MAKE) -C speech
+
 .PHONY: kernel
-kernel: kernel/.deps-obtained
+kernel: kernel/.deps-obtained speech
 	$(MAKE) -C kernel
 
 # The AREOS apps (.arx programs), built from the apps/ folder.
@@ -192,11 +207,13 @@ endif
 .PHONY: clean
 clean:
 	$(MAKE) -C kernel clean
+	$(MAKE) -C speech clean
 	$(MAKE) -C apps clean
 	rm -rf iso_root $(IMAGE_NAME).iso $(IMAGE_NAME).hdd
 
 .PHONY: distclean
 distclean:
 	$(MAKE) -C kernel distclean
+	$(MAKE) -C speech clean
 	$(MAKE) -C apps clean
 	rm -rf iso_root *.iso *.hdd limine-binary limine-binary.tar.gz edk2-ovmf-bins edk2-ovmf-bins.tar.gz

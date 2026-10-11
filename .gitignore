@@ -7,3 +7,5 @@
 *.hdd
 /apps/bin
 /tools/bin
+/speech/obj
+/speech/bin

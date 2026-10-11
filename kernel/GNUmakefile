@@ -415,10 +415,14 @@ all: bin-$(ARCH)/$(OUTPUT)
 # Include header dependencies.
 -include $(HEADER_DEPS)
 
+# AREOS: the speech engine, built separately in ../speech (it needs
+# floating point maths, which the rest of the kernel turns off).
+override SPEECH_LIB := ../speech/bin/libspeech.a
+
 # Link rules for the final executable.
-bin-$(ARCH)/$(OUTPUT): GNUmakefile linker-scripts/$(ARCH).lds $(OBJ)
+bin-$(ARCH)/$(OUTPUT): GNUmakefile linker-scripts/$(ARCH).lds $(OBJ) $(SPEECH_LIB)
 	mkdir -p "$(dir $@)"
-	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) -o $@
+	$(CC) $(CFLAGS) $(LDFLAGS) $(OBJ) $(SPEECH_LIB) -o $@
 
 # The compiler may emit calls to the memory functions and the compiler
 # runtime that LTO does not account for, so never build those with LTO.

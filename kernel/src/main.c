@@ -2,6 +2,8 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limine.h>
+#include "cpu.h"
+#include "speech.h"
 #include "console.h"
 #include "lang_en.h"
 #include "shell.h"
@@ -112,6 +114,7 @@ void kmain(void) {
         hcf();
     }
 
+    cpu_enable_floating_point();  // for the speech engine
     serial_init();  // first, so the terminal mirror catches everything
     console_init(framebuffer);
     graphics_init(framebuffer);
@@ -153,7 +156,11 @@ void kmain(void) {
     console_print(STR_BOOT_TIMER "\n");
     console_print(STR_BOOT_APPS_1);
     console_print_number(files_count());
-    console_print(STR_BOOT_APPS_2 "\n\n");
+    console_print(STR_BOOT_APPS_2 "\n");
+
+    // The built-in screen reader: a voice, through the sound card.
+    speech_init();
+    console_print("\n");
 
     console_set_color(COLOR_GREEN);
     console_print(STR_SHELL_BANNER "\n");

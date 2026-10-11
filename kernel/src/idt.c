@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include "idt.h"
+#include "thread.h"
 #include "pic.h"
 #include "panic.h"
 #include "process.h"
@@ -69,14 +70,19 @@ void irq_set_handler(int irq, irq_handler handler) {
     pic_unmask(irq);
 }
 
-// Called by interrupts.S for every interrupt.
-void interrupt_dispatch(struct interrupt_frame *frame) {
+// Called by interrupts.S for every interrupt. Returns the saved registers
+// to carry on with (another thread's, if it's time to switch).
+struct interrupt_frame *interrupt_dispatch(struct interrupt_frame *frame) {
     if (frame->vector == SYSCALL_VECTOR) {
         syscall_dispatch(frame);
-        return;
+        return frame;
     }
 
     if (frame->vector < IRQ_BASE) {
+        // The speech thread hit an error: stop speech, keep everything else going.
+        if (thread_in_speech()) {
+            return thread_speech_crashed();
+        }
         // A CPU error. If a program caused it, stop just that program.
         // If the kernel caused it, there's nothing for it but the crash screen.
         bool from_program = (frame->cs & 3) == 3;
@@ -91,12 +97,14 @@ void interrupt_dispatch(struct interrupt_frame *frame) {
         if (irq == 7 || irq == 15) {
             // Possibly a "spurious" interrupt: a false alarm from the PIC.
             if (pic_is_spurious(irq)) {
-                return;
+                return frame;
             }
         }
         if (irq_handlers[irq] != NULL) {
             irq_handlers[irq](frame);
         }
         pic_send_end_of_interrupt(irq);
+        return thread_schedule(frame, irq);
     }
+    return frame;
 }

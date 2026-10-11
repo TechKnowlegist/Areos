@@ -49,6 +49,8 @@ interrupt_common:
     cld                     # C code expects string operations to go forwards
     movq %rsp, %rdi         # argument 1: pointer to the saved registers
     call interrupt_dispatch
+    movq %rax, %rsp         # carry on with the frame it hands back: usually the
+                            # same one, or another thread's (see thread.c)
 
     popq %r15
     popq %r14

@@ -149,3 +149,7 @@ uint64_t pmm_total_bytes(void) {
 uint64_t pmm_free_bytes(void) {
     return free_pages * PAGE_SIZE;
 }
+
+uint64_t pmm_physical_address(const void *pointer) {
+    return (uint64_t)pointer - hhdm;
+}

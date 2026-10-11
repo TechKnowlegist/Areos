@@ -1,5 +1,7 @@
 // timer.c - AREOS's clock.
 
+#include "speech.h"
+#include "thread.h"
 #include "timer.h"
 #include "idt.h"
 #include "io.h"
@@ -15,6 +17,7 @@ static volatile uint64_t ticks = 0;
 static void on_tick(struct interrupt_frame *frame) {
     (void)frame;
     ticks++;
+    speech_tick();   // keep the sound card fed, speak paused lines
 }
 
 void timer_init(void) {
@@ -32,6 +35,6 @@ uint64_t timer_ms(void) {
 void timer_sleep_ms(uint64_t ms) {
     uint64_t wake_at = timer_ms() + ms;
     while (timer_ms() < wake_at) {
-        asm volatile ("hlt");  // rest until the next interrupt
+        thread_idle(wake_at);  // rest (and let speech work) until the next interrupt
     }
 }

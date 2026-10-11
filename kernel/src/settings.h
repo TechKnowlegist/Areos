@@ -19,6 +19,8 @@
 #define SETTING_VERBOSITY    3   // 0 = detailed announcements, 1 = brief
 #define SETTING_WALLPAPER    4   // 0 = nebula, 1 = red planet, 2 = plain
 #define SETTING_RETURN_TO    5   // desktop: which app it opened (+1), to come back to
+#define SETTING_SPEECH_OFF   6   // 0 = AREOS speaks (the default), 1 = quiet
+#define SETTING_SPEECH_SPEED 7   // 0 = normal, 1 = fast, 2 = very fast
 #define SETTING_NAME_FIRST   8   // 8-11: your name, 8 letters per setting
 
 bool settings_get(uint64_t id, uint64_t *value);

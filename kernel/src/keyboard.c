@@ -5,6 +5,9 @@
 // This file turns those numbers into key events, and key events into
 // letters.
 
+#include "speech.h"
+#include "thread.h"
+#include "timer.h"
 #include "keyboard.h"
 #include "io.h"
 #include "idt.h"
@@ -23,6 +26,7 @@
 #define SC_RIGHT_SHIFT 0x36
 #define SC_ALT         0x38
 #define SC_CAPS_LOCK   0x3A
+#define SC_S           0x1F
 #define SC_F1          0x3B   // F1-F10 are 0x3B-0x44
 #define SC_F10         0x44
 #define SC_F11         0x57
@@ -71,10 +75,51 @@ static volatile uint8_t buffer[BUFFER_SIZE];
 static volatile uint32_t buffer_head = 0;  // next slot to read
 static volatile uint32_t buffer_tail = 0;  // next slot to write
 
+// Speech keys, handled straight away (even while an app is busy):
+// Ctrl stops talking, Ctrl+Alt+S turns speech off or on, and any other
+// key press interrupts too, so you never have to wait for it to finish.
+// Returns false if the key was a speech shortcut that apps shouldn't see.
+static bool speech_key(uint8_t scancode) {
+    static bool extended = false, ctrl = false, alt = false;
+    if (scancode == SCANCODE_EXTENDED) {
+        extended = true;
+        return true;
+    }
+    bool released = scancode & SCANCODE_RELEASED;
+    uint8_t code = scancode & ~SCANCODE_RELEASED;
+    bool was_extended = extended;
+    extended = false;
+    if (code == SC_CTRL) {
+        ctrl = !released;
+        if (!released) speech_interrupt();
+        return true;
+    }
+    if (code == SC_ALT) {
+        alt = !released;
+        return true;
+    }
+    if (released) {
+        return true;
+    }
+    if (!was_extended && code == SC_S && ctrl && alt) {
+        speech_toggle();
+        return false;
+    }
+    bool modifier = code == SC_LEFT_SHIFT || code == SC_RIGHT_SHIFT || code == SC_CAPS_LOCK
+                 || (was_extended && (code == SC_EXT_SUPER_L || code == SC_EXT_SUPER_R));
+    if (!modifier) {
+        speech_interrupt();
+    }
+    return true;
+}
+
 // Runs every time a key goes down or up (hardware interrupt 1).
 static void on_keyboard_interrupt(struct interrupt_frame *frame) {
     (void)frame;
     uint8_t scancode = inb(KEYBOARD_DATA_PORT);
+    if (!speech_key(scancode)) {
+        return;   // a speech shortcut: not passed on
+    }
     uint32_t next = (buffer_tail + 1) % BUFFER_SIZE;
     if (next != buffer_head) {  // if the buffer is full, drop the key
         buffer[buffer_tail] = scancode;
@@ -219,7 +264,7 @@ bool keyboard_try_get_char(char *out) {
 char keyboard_get_char(void) {
     char c;
     while (!keyboard_try_get_char(&c)) {
-        asm volatile ("hlt");  // rest until the next interrupt
+        thread_idle(timer_ms() + 10);  // rest until the next interrupt
     }
     return c;
 }

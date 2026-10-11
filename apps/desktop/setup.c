@@ -102,8 +102,8 @@ static const char *body(void) {
         return "We've defaulted to dark mode, because bright screens can be hard on the eyes. "
                "You can change this anytime in Settings.";
     case ACCESSIBILITY:
-        return "AREOS describes what's on screen in text, so screen readers like NVDA can follow along. "
-               "Choose how much it says.";
+        return "AREOS reads the screen out loud, and describes it in text for screen readers "
+               "like NVDA. Choose how much it says.";
     default:
         return "The fourth OS is ready. Press Start to go to your desktop.";
     }

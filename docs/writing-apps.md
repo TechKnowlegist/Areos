@@ -51,6 +51,8 @@ While your app shows graphics, anything it prints still goes to the terminal, so
 
 `apps/include/gui.h` has what the desktop is built with: drawing rectangles and text onto a canvas, the dark and light themes, and accessibility helpers. Give every clickable thing a `struct gui_item` with a name and a role, and call `gui_announce_item` when it gets focus, so screen-reader users hear it. See `apps/desktop/` for a full example (start with `desktop.h`, which explains how the parts fit together). Apps made of several files go in a folder and are listed in `FOLDER_APPS` in `apps/GNUmakefile`. Also useful: `areos_mouse_event`, `areos_date_time`, `areos_setting_get`/`areos_setting_set` (the theme the user picked is `AREOS_SETTING_THEME`), and `areos_launch` to open another app.
 
+AREOS reads out everything an app prints, so text you print is already accessible. To cut speech off (say, when the mouse moves onto something new) call `areos_speech_stop()`; to say something without printing it, `areos_speech_say("text")`.
+
 Apps have no C library yet, so things like `printf` and `malloc` aren't available. Use the functions above instead.
 
 Everything an app prints also goes to the terminal, so apps are screen-reader friendly automatically.

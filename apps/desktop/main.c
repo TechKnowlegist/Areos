@@ -273,7 +273,8 @@ static void announce_help(void) {
                  "F6 moves between the desktop icons, the taskbar and the front window; Shift+F6 goes back. "
                  "Tab or the arrow keys move. Enter or Space opens or chooses. "
                  "Escape closes the Start menu or the front window. "
-                 "F2 says where you are. Typing a letter jumps to the next item starting with it.");
+                 "F2 says where you are. Typing a letter jumps to the next item starting with it. "
+                 "Ctrl stops the voice talking, and Ctrl+Alt+S turns the voice off or on.");
 }
 
 // ---- Doing things ----
@@ -577,6 +578,7 @@ static void describe_hover(void) {
         return;
     }
     if (name != NULL) {
+        areos_speech_stop();   // the newest thing under the mouse is what you hear
         text_copy(last_name, name, sizeof(last_name));
         last_time = now_ms;
         gui_line_start();

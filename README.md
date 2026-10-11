@@ -39,7 +39,7 @@ Later:
 - [x] Desktop and GUI, first version (app tiles, windows, mouse, clock)
 - [x] Real desktop: space wallpapers, taskbar, Start menu, movable windows, animations, Calculator and Notes
 - [ ] Saving settings to a disk (right now they last until AREOS turns off)
-- [ ] Built-in screen reader (sound driver + speech engine). Focus and mouse hover are already described in text.
+- [x] Built-in screen reader: AREOS reads everything out loud (sound card driver + the Flite voice)
 
 ## Apps
 
@@ -69,6 +69,20 @@ To skip the desktop, pick **AREOS (text only)** in the boot menu. At the command
 
 ## Accessibility
 
+### The built-in screen reader
+
+AREOS talks. Everything it writes is read out loud: the command line, what has focus on the desktop, and what the mouse is pointing at. Letters you type are read back too.
+
+- **Ctrl**: stop talking. Pressing any other key also cuts it off, so the newest thing is always what you hear.
+- **Ctrl+Alt+S**: turn the voice off or on.
+- **Settings** on the desktop: speak out loud or quiet, and normal, fast or very fast.
+
+The voice is [Flite](https://github.com/festvox/flite) from Carnegie Mellon University, running inside AREOS (see [speech/flite](speech/flite/README.md)). Sound comes out of an emulated AC'97 sound card; `make run-bios` adds one to QEMU and picks your sound system (PulseAudio on WSL). If you hear nothing, try `make run-bios AUDIO=sdl`.
+
+If you already use a screen reader on your computer, you might want AREOS's own voice off (Ctrl+Alt+S) so you don't hear things twice.
+
+### Text in the terminal
+
 Everything AREOS shows is also sent as plain text to the terminal you ran `make run-bios` from, and you can type there too, so screen readers like NVDA can use all of AREOS:
 
 - The command line and every app's text appear in the terminal.
@@ -89,6 +103,8 @@ AREOS opens in a QEMU window and also talks through the terminal. To quit, type 
 ## Credits
 
 Started from the [Limine C Template](https://github.com/limine-bootloader/limine-c-template). Boots with the [Limine](https://github.com/limine-bootloader/limine) bootloader.
+
+The voice is [Flite](https://github.com/festvox/flite) by the Language Technologies Institute at Carnegie Mellon University, with the CMU "slt" voice. Its licence is in [speech/flite/COPYING](speech/flite/COPYING).
 
 The built-in console font is a bitmap rendering of [DejaVu Sans Mono](https://dejavu-fonts.github.io/) Bold.
 

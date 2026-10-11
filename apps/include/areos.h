@@ -34,6 +34,7 @@
 #define AREOS_SYS_APP_NAME       15
 #define AREOS_SYS_LAUNCH         16
 #define AREOS_SYS_POWER          17
+#define AREOS_SYS_SPEECH         18
 
 // Settings (they last until AREOS is turned off). MUST match kernel/src/settings.h.
 #define AREOS_SETTING_SETUP_DONE  0   // 1 once setup has been finished
@@ -42,6 +43,8 @@
 #define AREOS_SETTING_VERBOSITY   3   // 0 = detailed announcements, 1 = brief
 #define AREOS_SETTING_WALLPAPER   4   // 0 = nebula, 1 = red planet, 2 = plain
 #define AREOS_SETTING_RETURN_TO   5   // desktop: which app it opened (+1), to come back to
+#define AREOS_SETTING_SPEECH_OFF   6   // 0 = AREOS speaks (the default), 1 = quiet
+#define AREOS_SETTING_SPEECH_SPEED 7   // 0 = normal, 1 = fast, 2 = very fast
 #define AREOS_SETTING_NAME_FIRST  8   // 8-11: the user's name, 8 letters per setting
 
 // The AREOS colors, so programs can match the system's look.
@@ -255,6 +258,13 @@ static inline bool areos_launch(const char *name, bool come_back) {
 
 static inline void areos_power_off(void)  { areos_syscall(AREOS_SYS_POWER, 0, 0); }
 static inline void areos_restart(void)    { areos_syscall(AREOS_SYS_POWER, 1, 0); }
+
+// The built-in screen reader. Everything printed is read out anyway; these
+// are for interrupting it, or saying something without printing it.
+static inline void areos_speech_stop(void) { areos_syscall(AREOS_SYS_SPEECH, 0, 0); }
+static inline void areos_speech_say(const char *text) {
+    areos_syscall(AREOS_SYS_SPEECH, 1, (uint64_t)text);
+}
 
 // Read a line of typing into `buffer` (at most `size - 1` characters).
 // Shows what's typed and handles Backspace. Returns the length.

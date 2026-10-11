@@ -2,6 +2,7 @@
 
 #include <stdbool.h>
 #include <stddef.h>
+#include "speech.h"
 #include "console.h"
 #include "font.h"
 #include "serial.h"
@@ -153,6 +154,7 @@ static void erase_cursor(void) {
 // (where a screen reader can read it). Terminals want "\r\n" for a new
 // line, and "back, space, back" to erase a letter.
 static void mirror_to_serial(char c) {
+    speech_feed_char(c);   // and to the built-in screen reader
     if (c == '\n') {
         serial_putc('\r');
         serial_putc('\n');

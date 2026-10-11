@@ -15,6 +15,14 @@
 #define STR_REAL_MACHINE    "If you're seeing this on a real machine, that's not good."
 #define STR_BOOT_MEMORY_1   "Memory: "
 #define STR_BOOT_MEMORY_2   " MB ready."
+// Speech (the built-in screen reader)
+#define STR_SPEECH_READY     "Speech is on. Press Ctrl to stop talking, or Ctrl+Alt+S to turn speech off."
+#define STR_SPEECH_READY_OFF "Speech is off. Press Ctrl+Alt+S to turn it on."
+#define STR_SPEECH_ON        "Speech on."
+#define STR_SPEECH_OFF       "Speech off."
+#define STR_SPEECH_NO_SOUND  "Speech: no sound card found, so AREOS can't talk."
+#define STR_SPEECH_FAILED    "Speech: the voice couldn't start, so AREOS can't talk."
+
 #define STR_BOOT_TIMER      "Timer: ticking 1000 times a second."
 #define STR_BOOT_APPS_1     "Apps: "
 #define STR_BOOT_APPS_2     " found. Type apps to see them."

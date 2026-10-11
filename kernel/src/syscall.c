@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "speech.h"
 #include "syscall.h"
 #include "idt.h"
 #include "process.h"
@@ -172,6 +173,22 @@ void syscall_dispatch(struct interrupt_frame *frame) {
 
     case SYS_SETTING_SET:
         result = settings_set(arg1, arg2) ? 0 : SYSCALL_ERROR;
+        if (arg1 == SETTING_SPEECH_OFF || arg1 == SETTING_SPEECH_SPEED) {
+            speech_settings_changed();
+        }
+        break;
+
+    case SYS_SPEECH:
+        if (arg1 == 0) {
+            speech_interrupt();
+            result = 0;
+        } else if (arg1 == 1) {
+            char text[256];
+            if (copy_name_from_user(arg2, text, sizeof(text))) {
+                speech_say(text);
+                result = 0;
+            }
+        }
         break;
 
     case SYS_APP_NAME:
