@@ -9,6 +9,8 @@
 #include "heap.h"
 #include "vmm.h"
 #include "panic.h"
+#include "gdt.h"
+#include "files.h"
 #include "idt.h"
 #include "pic.h"
 #include "timer.h"
@@ -45,6 +47,13 @@ static volatile struct limine_memmap_request memmap_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_hhdm_request hhdm_request = {
     .id = LIMINE_HHDM_REQUEST_ID,
+    .revision = 0
+};
+
+// ...and for the apps, which Limine loads into memory for us.
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_module_request module_request = {
+    .id = LIMINE_MODULE_REQUEST_ID,
     .revision = 0
 };
 
@@ -115,8 +124,10 @@ void kmain(void) {
     pmm_init(memmap_request.response, hhdm_request.response->offset);
     vmm_init(hhdm_request.response->offset);
     heap_init();
+    files_init(module_request.response);
 
     // Set up interrupts: the CPU's error handling, the timer, the keyboard.
+    gdt_init();
     idt_init();
     pic_init();
     timer_init();
@@ -127,7 +138,10 @@ void kmain(void) {
     console_print(STR_BOOT_MEMORY_1);
     console_print_number(pmm_total_bytes() / (1024 * 1024));
     console_print(STR_BOOT_MEMORY_2 "\n");
-    console_print(STR_BOOT_TIMER "\n\n");
+    console_print(STR_BOOT_TIMER "\n");
+    console_print(STR_BOOT_APPS_1);
+    console_print_number(files_count());
+    console_print(STR_BOOT_APPS_2 "\n\n");
 
     console_set_color(COLOR_GREEN);
     console_print(STR_SHELL_BANNER "\n");

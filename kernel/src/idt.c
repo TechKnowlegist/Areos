@@ -1,9 +1,12 @@
 // idt.c - interrupts.
 
+#include <stdbool.h>
 #include <stddef.h>
 #include "idt.h"
 #include "pic.h"
 #include "panic.h"
+#include "process.h"
+#include "syscall.h"
 
 // One entry in the IDT. The CPU dictates this exact layout, which is why
 // the handler's address is chopped into three pieces.
@@ -24,6 +27,7 @@ struct idt_pointer {
 } __attribute__((packed));
 
 #define GATE_INTERRUPT_KERNEL 0x8E  // present | ring 0 | 64-bit interrupt gate
+#define GATE_INTERRUPT_USER   0xEE  // same, but programs (ring 3) may trigger it
 
 static struct idt_gate idt[256];
 static irq_handler irq_handlers[16];
@@ -50,6 +54,9 @@ void idt_init(void) {
         idt[vector].reserved       = 0;
     }
 
+    // The system call gate is the one interrupt programs may use on purpose.
+    idt[SYSCALL_VECTOR].flags = GATE_INTERRUPT_USER;
+
     struct idt_pointer pointer = {
         .size = sizeof(idt) - 1,
         .address = (uint64_t)idt,
@@ -64,8 +71,18 @@ void irq_set_handler(int irq, irq_handler handler) {
 
 // Called by interrupts.S for every interrupt.
 void interrupt_dispatch(struct interrupt_frame *frame) {
+    if (frame->vector == SYSCALL_VECTOR) {
+        syscall_dispatch(frame);
+        return;
+    }
+
     if (frame->vector < IRQ_BASE) {
-        // A CPU error. Nothing sensible to do but show the crash screen.
+        // A CPU error. If a program caused it, stop just that program.
+        // If the kernel caused it, there's nothing for it but the crash screen.
+        bool from_program = (frame->cs & 3) == 3;
+        if (from_program) {
+            process_crashed(frame);
+        }
         kernel_panic_cpu(frame);
     }
 

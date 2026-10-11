@@ -16,7 +16,9 @@
 #include "cpu.h"
 #include "heap.h"
 #include "timer.h"
-#include "serial.h"
+#include "input.h"
+#include "files.h"
+#include "process.h"
 #include "pmm.h"
 #include "panic.h"
 #include "lang_en.h"
@@ -216,6 +218,97 @@ static void command_wait(const char *args) {
     console_print(STR_WAIT_DONE "\n");
 }
 
+static const char *cpu_error_names[32] = STR_CPU_ERROR_NAMES;
+
+static void command_apps(const char *args) {
+    (void)args;
+    if (files_count() == 0) {
+        console_print(STR_APPS_NONE "\n");
+        return;
+    }
+    for (size_t i = 0; i < files_count(); i++) {
+        const struct file *f = files_get(i);
+        console_set_color(COLOR_GREEN);
+        console_print("  ");
+        console_print(f->name);
+        for (size_t pad = text_length(f->name); pad < 16; pad++) {
+            console_putc(' ');
+        }
+        console_set_color(COLOR_BLUE);
+        if (f->size < 1024) {
+            console_print_number(f->size);
+            console_print(STR_APPS_BYTES);
+        } else {
+            print_size(f->size);
+        }
+        const char *format = process_format_name(f->data, f->size);
+        if (format != NULL) {
+            console_set_color(COLOR_DIM);
+            console_print("   ");
+            console_print(format);
+        }
+        console_print("\n");
+    }
+}
+
+static void run_file(const struct file *f) {
+    struct run_result result = process_run(f->data, f->size);
+    switch (result.status) {
+    case RUN_FINISHED:
+        if (result.exit_code != 0) {
+            console_set_color(COLOR_DIM);
+            console_print(f->name);
+            console_print(STR_RUN_EXIT_CODE_1);
+            console_print_number(result.exit_code);
+            console_print("\n");
+        }
+        break;
+    case RUN_CRASHED:
+        console_set_color(COLOR_WARNING);
+        console_print(f->name);
+        console_print(STR_RUN_CRASHED_1);
+        console_print(cpu_error_names[result.crash_error % 32]);
+        console_print("\n");
+        console_set_color(COLOR_DIM);
+        console_print(STR_RUN_WHERE);
+        console_print_hex(result.crash_where);
+        console_print("\n");
+        if (result.crash_error == 14) {
+            console_print(STR_RUN_ADDRESS);
+            console_print_hex(result.crash_address);
+            console_print("\n");
+        }
+        console_set_color(COLOR_GREEN);
+        console_print(STR_RUN_CRASHED_2 "\n");
+        break;
+    case RUN_BAD_FORMAT:
+        console_set_color(COLOR_WARNING);
+        console_print(STR_RUN_BAD_FORMAT "\n");
+        break;
+    case RUN_NO_MEMORY:
+        console_set_color(COLOR_WARNING);
+        console_print(STR_RUN_NO_MEMORY "\n");
+        break;
+    }
+}
+
+static void command_run(const char *args) {
+    if (args[0] == '\0') {
+        console_set_color(COLOR_WARNING);
+        console_print(STR_RUN_USAGE "\n");
+        return;
+    }
+    const struct file *f = files_find(args);
+    if (f == NULL) {
+        console_set_color(COLOR_WARNING);
+        console_print(STR_RUN_NOT_FOUND);
+        console_print(args);
+        console_print(STR_RUN_NOT_FOUND_2 "\n");
+        return;
+    }
+    run_file(f);
+}
+
 // ---- The command list ----
 // Add new commands here. The help list is built from this automatically.
 
@@ -229,6 +322,8 @@ static const struct command commands[] = {
     { "memory",  { "mem", "free" },                 STR_CMD_MEMORY_SHORT,  STR_CMD_MEMORY_LONG,  command_memory },
     { "memtest", { 0 },                             STR_CMD_MEMTEST_SHORT, STR_CMD_MEMTEST_LONG, command_memtest },
     { "crashtest", { 0 },                           STR_CMD_CRASH_SHORT,   STR_CMD_CRASH_LONG,   command_crashtest },
+    { "apps",    { "dir", "ls" },                   STR_CMD_APPS_SHORT,    STR_CMD_APPS_LONG,    command_apps },
+    { "run",     { "start", "open" },               STR_CMD_RUN_SHORT,     STR_CMD_RUN_LONG,     command_run },
     { "uptime",  { 0 },                             STR_CMD_UPTIME_SHORT,  STR_CMD_UPTIME_LONG,  command_uptime },
     { "wait",    { "sleep", "timeout" },            STR_CMD_WAIT_SHORT,    STR_CMD_WAIT_LONG,    command_wait },
     { "doom",    { 0 },                             STR_CMD_DOOM_SHORT,    STR_CMD_DOOM_LONG,    command_doom },
@@ -309,60 +404,11 @@ static void command_help(const char *args) {
 
 // ---- Reading and running a line ----
 
-#define CURSOR_BLINK_MS 500
-
-// Typing can also come from the terminal, through the serial port.
-// Translate what terminals send into what the shell expects.
-static bool serial_try_get_key(char *out) {
-    static int skip = 0;  // bytes left to ignore from an arrow-key code
-    char c;
-    while (serial_try_getc(&c)) {
-        if (skip > 0) {
-            skip--;
-            continue;
-        }
-        if (c == 0x1B) {            // Escape: arrow keys send Esc [ A etc.
-            skip = 2;
-            continue;
-        }
-        if (c == '\r') {
-            *out = KEY_ENTER;
-            return true;
-        }
-        if (c == 0x7F || c == 0x08) {  // Backspace (terminals send either)
-            *out = KEY_BACKSPACE;
-            return true;
-        }
-        if (c >= 32 && c <= 126) {
-            *out = c;
-            return true;
-        }
-    }
-    return false;
-}
-
-// Wait for a key, blinking the cursor while we wait.
-static char wait_for_key(void) {
-    bool cursor_on = true;
-    uint64_t next_blink = timer_ms() + CURSOR_BLINK_MS;
-    char c;
-    while (!keyboard_try_get_char(&c) && !serial_try_get_key(&c)) {
-        if (timer_ms() >= next_blink) {
-            cursor_on = !cursor_on;
-            console_blink_cursor(cursor_on);
-            next_blink = timer_ms() + CURSOR_BLINK_MS;
-        }
-        asm volatile ("hlt");  // rest until the next interrupt (key or tick)
-    }
-    console_blink_cursor(true);  // always show it right after a key press
-    return c;
-}
-
 // Read one line of typing into buffer. Handles Backspace. Returns on Enter.
 static void read_line(char *buffer) {
     size_t length = 0;
     for (;;) {
-        char c = wait_for_key();
+        char c = input_wait_key(true);
         if (c == KEY_ENTER) {
             console_putc('\n');
             buffer[length] = '\0';
@@ -408,6 +454,13 @@ static void run_line(char *line) {
 
     const struct command *cmd = find_command(word);
     if (cmd == NULL) {
+        // Not a command. Maybe it's the name of an app?
+        const struct file *app = files_find(word);
+        if (app != NULL) {
+            console_set_color(COLOR_BLUE);
+            run_file(app);
+            return;
+        }
         print_unknown(STR_UNKNOWN_COMMAND_1, word);
         return;
     }

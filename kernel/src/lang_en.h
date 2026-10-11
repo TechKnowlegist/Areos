@@ -16,6 +16,8 @@
 #define STR_BOOT_MEMORY_1   "Memory: "
 #define STR_BOOT_MEMORY_2   " MB ready."
 #define STR_BOOT_TIMER      "Timer: ticking 1000 times a second."
+#define STR_BOOT_APPS_1     "Apps: "
+#define STR_BOOT_APPS_2     " found. Type apps to see them."
 #define STR_SHELL_BANNER    "Delete everything or fix everything."
 #define STR_SHELL_HINT      "Type help to get started."
 
@@ -66,6 +68,12 @@
 #define STR_CMD_WAIT_SHORT      "Pause for some seconds"
 #define STR_CMD_WAIT_LONG       "Waits for the number of seconds you give it, then carries on. Example: wait 3"
 
+#define STR_CMD_APPS_SHORT      "List the apps"
+#define STR_CMD_APPS_LONG       "Lists the .arx programs AREOS was started with, how big each is, and which format it uses (ELF inside, or native AREOS)."
+
+#define STR_CMD_RUN_SHORT       "Run an app"
+#define STR_CMD_RUN_LONG        "Runs an app, like 'run hello'. You can also just type the app's name. Apps run walled off from AREOS, so if one crashes, AREOS keeps going."
+
 // ---- Command output ----
 #define STR_ABOUT_TEXT      "AREOS v0.1 - a hobby operating system built from scratch.\n" \
                             "Not Linux. Not Windows. Not macOS. Its own thing.\n" \
@@ -89,6 +97,18 @@
 #define STR_UPTIME_SECONDS  " s"
 #define STR_WAIT_USAGE      "Tell me how many seconds, like: wait 3"
 #define STR_WAIT_DONE       "Done waiting."
+#define STR_APPS_NONE       "No apps were loaded."
+#define STR_APPS_BYTES      " bytes"
+#define STR_RUN_USAGE       "Which app? Like: run hello. Type apps to see them all."
+#define STR_RUN_NOT_FOUND   "There's no app called \""
+#define STR_RUN_NOT_FOUND_2 "\". Type apps to see them all."
+#define STR_RUN_BAD_FORMAT  "That file isn't a program AREOS knows how to run."
+#define STR_RUN_NO_MEMORY   "There isn't enough memory to run that."
+#define STR_RUN_EXIT_CODE_1 " finished with exit code "
+#define STR_RUN_CRASHED_1   " crashed: "
+#define STR_RUN_CRASHED_2   "AREOS is fine, only the app was stopped."
+#define STR_RUN_WHERE       "  At instruction: "
+#define STR_RUN_ADDRESS     "  Tried to use address: "
 #define STR_CRASH_REASON    "You asked for a crash with the crashtest command. Everything is fine!"
 
 // ---- Crash screen ----

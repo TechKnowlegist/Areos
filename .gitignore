@@ -5,3 +5,5 @@
 /iso_root
 *.iso
 *.hdd
+/apps/bin
+/tools/bin

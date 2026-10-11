@@ -45,7 +45,7 @@ endif
 override QEMU_UEFI_FLAGS := \
     -drive if=pflash,unit=0,format=raw,file=edk2-ovmf-bins/ovmf-code-$(ARCH).fd,readonly=on
 
-override IMAGE_NAME := template-$(ARCH)
+override IMAGE_NAME := areos-$(ARCH)
 
 # User controllable size of the HDD image, in MiB.
 HDD_SIZE := 64
@@ -139,12 +139,23 @@ kernel/.deps-obtained:
 kernel: kernel/.deps-obtained
 	$(MAKE) -C kernel
 
-$(IMAGE_NAME).iso: limine-binary/limine kernel
+# The AREOS apps (.arx programs), built from the apps/ folder.
+.PHONY: apps
+apps:
+	$(MAKE) -C apps
+
+$(IMAGE_NAME).iso: limine-binary/limine kernel apps
 	rm -rf iso_root
 	mkdir -p iso_root/boot
 	cp kernel/bin-$(ARCH)/kernel iso_root/boot/
 	mkdir -p iso_root/boot/limine
 	cp limine.conf limine-binary/limine-uefi-cd.bin iso_root/boot/limine/
+	# Put the apps on the disc, and tell Limine to load each one for AREOS.
+	mkdir -p iso_root/apps
+	cp apps/bin/*.arx iso_root/apps/
+	for app in apps/bin/*.arx; do \
+		echo "    module_path: boot():/apps/$$(basename $$app)" >> iso_root/boot/limine/limine.conf; \
+	done
 ifeq ($(ARCH),x86_64)
 	cp limine-binary/limine-bios.sys limine-binary/limine-bios-cd.bin iso_root/boot/limine/
 endif
@@ -179,9 +190,11 @@ endif
 .PHONY: clean
 clean:
 	$(MAKE) -C kernel clean
+	$(MAKE) -C apps clean
 	rm -rf iso_root $(IMAGE_NAME).iso $(IMAGE_NAME).hdd
 
 .PHONY: distclean
 distclean:
 	$(MAKE) -C kernel distclean
+	$(MAKE) -C apps clean
 	rm -rf iso_root *.iso *.hdd limine-binary limine-binary.tar.gz edk2-ovmf-bins edk2-ovmf-bins.tar.gz

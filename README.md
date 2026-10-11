@@ -30,7 +30,7 @@ The goals:
 - [x] Shell
 - [x] Memory management
 - [x] Timer + interrupts
-- [ ] Program loader
+- [x] Program loader (`.arx` apps, in ELF or native AREOS format)
 - [ ] Graphics mode
 - [ ] Doom
 
@@ -38,6 +38,13 @@ Later:
 - [ ] Desktop and mini apps
 - [ ] GUI (windows and a mouse)
 - [ ] Built-in screen reader (sound driver + speech engine, reads the screen and what the mouse is over)
+
+## Apps
+
+AREOS runs `.arx` programs, each walled off in its own memory so a crashing app can't take AREOS down. Type `apps` to list them and type an app's name to run it. Try `hello`, `countdown`, and `oops` (which crashes on purpose).
+
+- [Writing an AREOS app](docs/writing-apps.md)
+- [The .arx format](docs/arx-format.md)
 
 ## Accessibility
 
