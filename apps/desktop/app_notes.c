@@ -11,8 +11,8 @@
 #define NOTE_MAX 4000
 #define AREA_X 16
 #define AREA_Y 16
-#define AREA_W 568
-#define AREA_H 316
+#define AREA_W (content_w - 32)
+#define AREA_H (content_h - 84)
 
 static char note[NOTE_MAX + 1];
 static int length = 0;
@@ -46,10 +46,10 @@ static int build(struct gui_item *items, int max) {
         .action = ACTION(A_CONTENT, TEXT_AREA), .state = summary, .value = NULL,
         .x = AREA_X, .y = AREA_Y, .w = AREA_W, .h = AREA_H };
     items[1] = (struct gui_item){ .name = "Read it all", .role = GUI_ROLE_BUTTON,
-        .action = ACTION(A_CONTENT, READ_ALL), .x = AREA_X, .y = 346, .w = 170, .h = 38 };
+        .action = ACTION(A_CONTENT, READ_ALL), .x = AREA_X, .y = content_h - 54, .w = 170, .h = 38 };
     items[2] = (struct gui_item){ .name = clear_armed ? "Clear (press again)" : "Clear",
         .role = GUI_ROLE_BUTTON, .action = ACTION(A_CONTENT, CLEAR),
-        .x = AREA_X + 184, .y = 346, .w = 190, .h = 38 };
+        .x = AREA_X + 184, .y = content_h - 54, .w = 190, .h = 38 };
     return 3;
 }
 
@@ -74,9 +74,9 @@ static void draw(struct gui_canvas *c, struct gui_item *items, int count, int fo
     int first = rows > visible_rows ? rows - visible_rows : 0;
     int cursor_x = AREA_X + 12, cursor_y = AREA_Y + 10;
     for (int r = first; r < rows; r++) {
-        char text[128];
+        char text[256];
         int n = ends[r] - starts[r];
-        if (n > 127) n = 127;
+        if (n > 255) n = 255;
         for (int k = 0; k < n; k++) text[k] = note[starts[r] + k];
         text[n] = '\0';
         int y = AREA_Y + 10 + (r - first) * 18;
@@ -190,6 +190,6 @@ static void opened(void) {
 }
 
 const struct window_app app_notes = {
-    .title = "Notes", .icon = ICON_NOTES, .width = 600, .height = 400,
+    .title = "Notes", .icon = ICON_NOTES, .width = 600, .height = 400, .resizable = true,
     .build = build, .draw = draw, .key = key, .choose = choose, .opened = opened,
 };

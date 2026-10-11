@@ -333,6 +333,12 @@ static const char *role_name(enum gui_role role) {
     case GUI_ROLE_ICON:       return "icon";
     case GUI_ROLE_MENU_ITEM:  return "menu item";
     case GUI_ROLE_TASKBAR:    return "taskbar button";
+    case GUI_ROLE_SLIDER:     return "slider";
+    case GUI_ROLE_SWITCH:     return "toggle";
+    case GUI_ROLE_TAB:        return "tab";
+    case GUI_ROLE_LINK:       return "link";
+    case GUI_ROLE_HEADING:    return "heading";
+    case GUI_ROLE_DOCUMENT:   return "web page";
     }
     return "item";
 }
@@ -344,6 +350,16 @@ void gui_announce_item(const struct gui_item *item, int position, int count, boo
     gui_line_add(role_name(item->role));
     if (item->role == GUI_ROLE_RADIO) {
         gui_line_add(item->checked ? ", selected" : ", not selected");
+    }
+    if (item->role == GUI_ROLE_TAB && item->checked) {
+        gui_line_add(", selected");
+    }
+    if (item->role == GUI_ROLE_SWITCH) {
+        gui_line_add(item->checked ? ", on" : ", off");
+    }
+    if (item->role == GUI_ROLE_SLIDER && item->value != NULL) {
+        gui_line_add(", ");
+        gui_line_add(item->value);
     }
     if (item->role == GUI_ROLE_TEXT_FIELD && item->value != NULL) {
         if (item->value[0] != '\0') {

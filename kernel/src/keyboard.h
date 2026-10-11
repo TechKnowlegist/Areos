@@ -36,6 +36,7 @@
 #define KEY_PAGE_DOWN  0x8C
 #define KEY_F1         0x90   // F1 to F12 are 0x90 to 0x9B
 #define KEY_BACK_TAB   0xA0   // only used inside input.c (terminal Shift+Tab)
+#define KEY_ALT_CHAR   0xA1   // only used inside input.c (terminal Alt+letter)
 
 struct key_event {
     uint8_t key;       // a KEY_ code, or a lowercase letter/digit/symbol

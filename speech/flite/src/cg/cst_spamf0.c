@@ -98,7 +98,8 @@ cst_utterance *cst_spamf0(cst_utterance *utt)
     param_track = val_track(utt_feat_val(utt,"param_track"));
     for (i=0;i<utt_feat_int(utt,"param_track_num_frames");i++)
     {
-        param_track->frames[i][0]=spamf0_track->frames[i][0];
+        param_track->frames[i][0]=spamf0_track->frames[i][0]
+            * get_param_float(utt->features,"f0_shift",1.0);   /* AREOS: higher and deeper voices */
     }
     delete_track(spamf0_track);
     return utt;

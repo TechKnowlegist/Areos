@@ -30,6 +30,10 @@ void graphics_stop(void);
 
 bool graphics_active(void);
 
+// Turn a point on the screen into a pixel of the app's picture (which
+// may be zoomed and centered).
+void graphics_screen_to_picture(uint32_t *x, uint32_t *y);
+
 uint32_t graphics_screen_width(void);
 uint32_t graphics_screen_height(void);
 

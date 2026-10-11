@@ -3,6 +3,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "net.h"
 #include "speech.h"
 #include "syscall.h"
 #include "idt.h"
@@ -144,14 +145,24 @@ void syscall_dispatch(struct interrupt_frame *frame) {
     }
 
     case SYS_MOUSE_EVENT: {
-        // Packed: bits 0-15 dx, 16-31 dy, 32-34 buttons, bit 40 "there was an event".
+        // Packed: bits 0-15 dx, 16-31 dy, 32-34 buttons, bit 40 "there was an event",
+        // bit 41 "absolute": then bits 0-15 / 16-31 are the x / y position instead,
+        // in the app's own pixels.
         struct mouse_event event;
         result = 0;
         if (mouse_try_get_event(&event)) {
-            result = (uint64_t)(uint16_t)event.dx
-                   | ((uint64_t)(uint16_t)event.dy << 16)
+            uint16_t first = (uint16_t)event.dx, second = (uint16_t)event.dy;
+            if (event.absolute) {
+                uint32_t x = event.x, y = event.y;
+                graphics_screen_to_picture(&x, &y);
+                first = (uint16_t)x;
+                second = (uint16_t)y;
+            }
+            result = (uint64_t)first
+                   | ((uint64_t)second << 16)
                    | ((uint64_t)event.buttons << 32)
-                   | (1ULL << 40);
+                   | (1ULL << 40)
+                   | (event.absolute ? (1ULL << 41) : 0);
         }
         break;
     }
@@ -173,7 +184,8 @@ void syscall_dispatch(struct interrupt_frame *frame) {
 
     case SYS_SETTING_SET:
         result = settings_set(arg1, arg2) ? 0 : SYSCALL_ERROR;
-        if (arg1 == SETTING_SPEECH_OFF || arg1 == SETTING_SPEECH_SPEED) {
+        if (arg1 == SETTING_SPEECH_OFF || arg1 == SETTING_SPEECH_SPEED
+            || arg1 == SETTING_SPEECH_VOICE || arg1 == SETTING_VOLUME) {
             speech_settings_changed();
         }
         break;
@@ -210,6 +222,43 @@ void syscall_dispatch(struct interrupt_frame *frame) {
         } else if (arg1 == 1) {
             power_restart();
         }
+        break;
+
+    case SYS_NET_LOOKUP: {
+        char name[256];
+        if (copy_name_from_user(arg1, name, sizeof(name))) {
+            result = net_lookup(name);
+        }
+        break;
+    }
+
+    case SYS_TCP_CONNECT: {
+        int handle = tcp_connect((uint32_t)arg1, (uint16_t)arg2);
+        result = handle < 0 ? SYSCALL_ERROR : (uint64_t)handle;
+        break;
+    }
+
+    case SYS_TCP_SEND:
+        if (arg3 <= 65536 && vmm_user_range_ok(arg2, arg3)) {
+            int sent = tcp_send((int)arg1, (const void *)arg2, (int)arg3);
+            result = sent < 0 ? SYSCALL_ERROR : (uint64_t)sent;
+        }
+        break;
+
+    case SYS_TCP_RECEIVE:
+        if (arg3 <= 65536 && vmm_user_range_ok(arg2, arg3)) {
+            int got = tcp_receive((int)arg1, (void *)arg2, (int)arg3);
+            result = got < 0 ? SYSCALL_ERROR : (uint64_t)got;
+        }
+        break;
+
+    case SYS_TCP_CLOSE:
+        tcp_close((int)arg1);
+        result = 0;
+        break;
+
+    case SYS_NET_ADDRESS:
+        result = net_address();
         break;
 
     default:

@@ -18,7 +18,7 @@ HEADERS := ../kernel/freestanding-c-hdrs/include
 
 override INCLUDES := -nostdinc -isystem $(HEADERS) -I libc/include -I libc -I . \
     -I flite/include -I flite/lang/usenglish -I flite/lang/cmulex \
-    -I flite/lang/cmu_us_slt -I flite/src/cg -I flite/src/regex -I flite/src/speech
+    -I flite/src/cg -I flite/src/regex -I flite/src/speech
 
 override COMMON := $(OPT) -g -pipe -std=gnu11 -ffreestanding -fno-builtin -fno-common \
     -fno-stack-protector -fno-stack-check -fno-PIC -m64 -march=x86-64 -mno-red-zone \

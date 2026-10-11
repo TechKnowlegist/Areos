@@ -22,6 +22,9 @@ void sound_flush(void);
 // Is anything still waiting to play?
 bool sound_busy(void);
 
+// Loudness, 0 (silent) to 100 (full).
+void sound_set_volume(int percent);
+
 // Called by the timer: keeps the card's buffers topped up.
 void sound_tick(void);
 

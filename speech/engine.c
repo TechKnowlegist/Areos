@@ -1,8 +1,8 @@
 // engine.c - the AREOS speech engine: turns text into sound with Flite.
 //
 // Flite (festvox.org/flite, from Carnegie Mellon University) does the hard
-// part: working out how words are said and making the voice. We use its
-// "slt" voice, a clear US English female voice.
+// part: working out how words are said and making the voice. Four of its
+// voices are built in (see speech_engine_voice_name).
 //
 // This file is the small layer between Flite and the AREOS kernel:
 //   speech_engine_init()  set Flite up with a block of memory
@@ -20,8 +20,29 @@
 #include "libc/libc.h"
 
 cst_voice *register_cmu_us_slt(const char *voxdir);
+cst_voice *register_cmu_us_rms(const char *voxdir);
+cst_voice *register_cmu_us_awb(const char *voxdir);
+cst_voice *register_cmu_us_kal16(const char *voxdir);
 
-static cst_voice *voice;
+// Ten voices from four recordings: each "higher" or "deeper" voice is the
+// same recording spoken at a different pitch.
+#define VOICE_COUNT 10
+#define BASE_COUNT 4
+static const struct { const char *name; int base; int pitch_percent; } voice_table[VOICE_COUNT] = {
+    { "Sally (US English)",           0, 100 },   // Flite's "slt"
+    { "Rob (US English)",             1, 100 },   // "rms"
+    { "Alan (Scottish English)",      2, 100 },   // "awb"
+    { "Kal (classic robot)",          3, 100 },   // "kal16"
+    { "Ivy (higher Sally)",           0, 125 },
+    { "Sam (deeper Sally)",           0,  78 },
+    { "Finn (higher Rob)",            1, 140 },
+    { "Dan (deeper Rob)",             1,  82 },
+    { "Angus (deeper Alan)",          2,  80 },
+    { "Kit (higher Kal)",             3, 135 },
+};
+static cst_voice *bases[BASE_COUNT];
+static int voice_index;             // the one speaking
+static cst_voice *voice;            // its recording
 static cst_audio_streaming_info *streaming;
 static speech_sound_fn current_sound;
 static void *current_user;
@@ -58,13 +79,19 @@ bool speech_engine_init(void *memory, size_t size) {
     cst_errjmp = &here;
 
     flite_init();
-    voice = register_cmu_us_slt(NULL);
-    if (voice != NULL) {
-        streaming = new_audio_streaming_info();
-        streaming->asc = got_sound;
-        streaming->min_buffsize = 512;   // hand sound over in small pieces
-        feat_set(voice->features, "streaming_info", audio_streaming_info_val(streaming));
+    bases[0] = register_cmu_us_slt(NULL);
+    bases[1] = register_cmu_us_rms(NULL);
+    bases[2] = register_cmu_us_awb(NULL);
+    bases[3] = register_cmu_us_kal16(NULL);
+    streaming = new_audio_streaming_info();
+    streaming->asc = got_sound;
+    streaming->min_buffsize = 512;   // hand sound over in small pieces
+    for (int i = 0; i < BASE_COUNT; i++) {
+        if (bases[i] != NULL) {
+            feat_set(bases[i]->features, "streaming_info", audio_streaming_info_val(streaming));
+        }
     }
+    voice = bases[0];
 
     escape = NULL;
     cst_errjmp = NULL;
@@ -93,6 +120,21 @@ static bool say_current(void) {
     return true;
 }
 
+int speech_engine_voice_count(void) {
+    return VOICE_COUNT;
+}
+
+const char *speech_engine_voice_name(int index) {
+    return (index >= 0 && index < VOICE_COUNT) ? voice_table[index].name : "";
+}
+
+void speech_engine_set_voice(int index) {
+    if (index >= 0 && index < VOICE_COUNT && bases[voice_table[index].base] != NULL) {
+        voice_index = index;
+        voice = bases[voice_table[index].base];
+    }
+}
+
 int speech_engine_sample_rate(void) {
     return 16000;
 }
@@ -104,6 +146,9 @@ bool speech_engine_say(const char *text, int speed_percent, speech_sound_fn soun
     if (speed_percent < 50) speed_percent = 50;
     if (speed_percent > 400) speed_percent = 400;
     feat_set_float(voice->features, "duration_stretch", 100.0f / (float)speed_percent);
+    // Higher and deeper voices: shift the pitch.
+    float shift = (float)voice_table[voice_index].pitch_percent / 100.0f;
+    feat_set_float(voice->features, "f0_shift", shift);
     current_sound = sound;
     current_user = user;
     current_text = text;

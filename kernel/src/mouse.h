@@ -18,6 +18,8 @@ struct mouse_event {
     int16_t dx;        // movement right (negative = left)
     int16_t dy;        // movement DOWN (negative = up), screen-style
     uint8_t buttons;   // MOUSE_BUTTON_ flags held right now
+    bool absolute;     // true: no dx/dy, but x/y say exactly where the pointer is
+    uint16_t x, y;     // (absolute only) position on the screen, in pixels
 };
 
 void mouse_init(void);

@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 #include <limine.h>
+#include "net.h"
 #include "cpu.h"
 #include "speech.h"
 #include "console.h"
@@ -157,6 +158,9 @@ void kmain(void) {
     console_print(STR_BOOT_APPS_1);
     console_print_number(files_count());
     console_print(STR_BOOT_APPS_2 "\n");
+
+    // The network (before any program starts: see vmm_map_hardware).
+    net_init();
 
     // The built-in screen reader: a voice, through the sound card.
     speech_init();

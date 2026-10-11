@@ -82,6 +82,24 @@ void graphics_stop(void) {
     console_pause_screen(false);
 }
 
+// Where the last picture was drawn (see graphics_draw).
+static uint32_t picture_left = 0, picture_top = 0, picture_scale = 1;
+static uint32_t picture_width = 0, picture_height = 0;
+
+void graphics_screen_to_picture(uint32_t *x, uint32_t *y) {
+    if (picture_width == 0) {
+        return;   // nothing drawn yet: screen pixels it is
+    }
+    int64_t px = ((int64_t)*x - picture_left) / picture_scale;
+    int64_t py = ((int64_t)*y - picture_top) / picture_scale;
+    if (px < 0) px = 0;
+    if (py < 0) py = 0;
+    if (px >= picture_width) px = picture_width - 1;
+    if (py >= picture_height) py = picture_height - 1;
+    *x = (uint32_t)px;
+    *y = (uint32_t)py;
+}
+
 void graphics_draw(const uint32_t *pixels, uint32_t width, uint32_t height) {
     if (!active || width == 0 || height == 0) {
         return;
@@ -102,6 +120,13 @@ void graphics_draw(const uint32_t *pixels, uint32_t width, uint32_t height) {
     // Center it on the screen.
     uint32_t left = ((uint32_t)screen->width - shown_width) / 2;
     uint32_t top = ((uint32_t)screen->height - shown_height) / 2;
+
+    // Remember where the picture went, to turn mouse positions into its pixels.
+    picture_left = left;
+    picture_top = top;
+    picture_scale = scale;
+    picture_width = width;
+    picture_height = height;
 
     bool direct = screen_is_rgb();
     uint8_t *base = screen->address;

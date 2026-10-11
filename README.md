@@ -56,14 +56,14 @@ Built in: **Calculator**, **Notes**, **Settings** (dark or light mode, three wal
 
 The desktop has areas: the desktop icons, the taskbar, the Start menu and the front window.
 
-- **F3** or the **Windows key**: open or close the Start menu.
+- **F3**, **Alt+Space** or the **Windows key**: open or close the Start menu.
 - **F6**: move to the next area. **Shift+F6**: the one before.
 - **Tab** or **arrow keys**: move. **Shift+Tab**: move back. **Home**/**End**: first/last item.
 - **Enter** or **Space**: open or choose.
 - **Escape**: close the Start menu, or the front window.
 - **F1**: hear the keys. **F2**: hear where you are.
 - **Letters**: jump to the next item starting with that letter.
-- The **mouse** works too: double-click desktop icons, click everything else, drag windows by their title bar, click a taskbar button to bring a window back.
+- The **mouse** works too, and in QEMU AREOS's pointer sits exactly under your real one: double-click desktop icons, click everything else, drag windows by their title bar, click a taskbar button to bring a window back.
 
 To skip the desktop, pick **AREOS (text only)** in the boot menu. At the command line, `desktop` opens it again and `setup` reruns the setup screens.
 
@@ -107,6 +107,30 @@ Started from the [Limine C Template](https://github.com/limine-bootloader/limine
 The voice is [Flite](https://github.com/festvox/flite) by the Language Technologies Institute at Carnegie Mellon University, with the CMU "slt" voice. Its licence is in [speech/flite/COPYING](speech/flite/COPYING).
 
 The built-in console font is a bitmap rendering of [DejaVu Sans Mono](https://dejavu-fonts.github.io/) Bold.
+
+## Settings, launcher and quick settings
+
+- The start menu is the **AREOS launcher** (F3, Alt+Space or the Windows key).
+- **Alt+Q** opens quick settings: volume, speech speed, mouse size, theme, accent colour and more.
+- The Settings app has categories. Accessibility has the screen reader switch, a voice slider with ten voices (Sally, Rob, Alan and Kal, plus higher and deeper versions of each), a speech speed slider and mouse pointer size.
+- Settings live in memory for now; saving to disk comes later.
+
+## Window management
+
+- Maximize, restore and snap to the left or right half of the screen (Settings, Notes and Browser can resize; Calculator and About stay their size).
+- Keyboard: **Alt+Shift+Left / Right** snap, **Alt+Shift+Up** maximizes, **Alt+Shift+Down** restores (or minimizes). From the terminal mirror: **Alt+L**, **Alt+R**, **Alt+M**.
+- Mouse: the Maximize button in the title bar, double-click the title bar, or drag a window to the left edge, right edge or top of the screen. Dragging a snapped window pulls it back to its normal size.
+
+## Browser (version 2)
+
+Open **Browser** from the launcher. It uses AREOS's own network stack (DHCP, DNS, TCP) and reads plain **http** pages: words, headings, links and simple forms.
+
+- Alt+D: address bar (type an address or words to search with FrogFind). Backspace or Alt+Left: back. Alt+Right: forward. F5: reload. The Reload button becomes Stop while loading.
+- On a page: Down/Up read line by line, Tab/Shift+Tab move between links, text boxes and buttons, Enter follows, H jumps to headings, K to links, Space/Page Down scroll.
+- **R** reads the page aloud from here (any key stops). **/** finds words, **N** finds the next match. **B** bookmarks the page, **Alt+B** shows bookmarks, **Alt+H** shows history.
+- The page re-flows when the window is maximized or snapped.
+- Not yet: https, pictures, styles, JavaScript.
+- In QEMU, `make run-bios` adds the network card (`-nic user,model=e1000`) and hides the Windows pointer over the AREOS screen (turn off with `HIDE_HOST_POINTER=no`).
 
 ## License
 

@@ -101,6 +101,12 @@ enum gui_role {
     GUI_ROLE_ICON,        // a desktop icon
     GUI_ROLE_MENU_ITEM,   // an entry in a menu (like the Start menu)
     GUI_ROLE_TASKBAR,     // a button on the taskbar
+    GUI_ROLE_SLIDER,      // a value you slide left and right (value says what it's at)
+    GUI_ROLE_SWITCH,      // an on/off toggle (checked = on)
+    GUI_ROLE_TAB,         // one of a set of pages, like Settings categories (checked = showing)
+    GUI_ROLE_LINK,        // a link on a web page
+    GUI_ROLE_HEADING,     // a heading on a web page
+    GUI_ROLE_DOCUMENT,    // a whole web page
 };
 
 struct gui_item {
@@ -109,7 +115,7 @@ struct gui_item {
     int action;           // what happens when it's chosen (app-defined number)
     bool checked;         // radio buttons: is this the chosen one?
     bool disabled;        // shown, but can't be chosen
-    const char *value;    // text fields: what's typed in it
+    const char *value;    // text fields: what's typed in it; sliders: where it's at ("150%")
     const char *state;    // extra words to say, like "minimized" (or NULL)
     int x, y, w, h;       // where it is on screen
 };

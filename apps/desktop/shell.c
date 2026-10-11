@@ -1,4 +1,5 @@
-// shell.c - the desktop's furniture: icons, taskbar, Start menu, notifications.
+// shell.c - the desktop's furniture: icons, taskbar, the AREOS launcher
+// (the start menu), quick settings, notifications.
 
 #include "desktop.h"
 
@@ -36,7 +37,7 @@ static void outlined_text(int x, int y, const char *text, uint32_t color, uint32
 void shell_draw_desktop_icons(int focus, int hovered) {
     struct gui_item items[MAX_LAUNCHABLES];
     int count = desktop_items(items, MAX_LAUNCHABLES);
-    bool light = theme == &gui_theme_light;
+    bool light = light_mode;
     uint32_t label_color = light ? 0x0A0F14 : 0xFFFFFF;
     uint32_t outline = light ? 0xFFFFFF : 0x000000;
     for (int i = 0; i < count; i++) {
@@ -87,10 +88,15 @@ static void update_clock(void) {
     int month = (t.month >= 1 && t.month <= 12) ? t.month - 1 : 0;
     int hour12 = t.hour % 12 == 0 ? 12 : t.hour % 12;
     clock_text[0] = '\0';
-    text_append_number(clock_text, hour12, 24);
+    if (clock_24h) {
+        if (t.hour < 10) text_append(clock_text, "0", 24);
+        text_append_number(clock_text, t.hour, 24);
+    } else {
+        text_append_number(clock_text, hour12, 24);
+    }
     text_append(clock_text, t.minute < 10 ? ":0" : ":", 24);
     text_append_number(clock_text, t.minute, 24);
-    text_append(clock_text, t.hour < 12 ? " AM" : " PM", 24);
+    if (!clock_24h) text_append(clock_text, t.hour < 12 ? " AM" : " PM", 24);
     date_text[0] = '\0';
     text_append(date_text, month_short[month], 32);
     text_append(date_text, " ", 32);
@@ -109,7 +115,7 @@ int taskbar_items(struct gui_item *items, int max) {
     int top = screen.height - TASKBAR_H;
     int count = 0;
     update_clock();
-    items[count++] = (struct gui_item){ .name = "Start", .role = GUI_ROLE_BUTTON,
+    items[count++] = (struct gui_item){ .name = "AREOS launcher", .role = GUI_ROLE_BUTTON,
         .action = ACTION(A_START_BUTTON, 0), .x = 8, .y = top + 4,
         .w = START_BUTTON_SIZE, .h = START_BUTTON_SIZE };
     // One button per open window, in a steady order so they don't jump about.
@@ -123,6 +129,9 @@ int taskbar_items(struct gui_item *items, int max) {
             .h = START_BUTTON_SIZE, .state = w->minimized ? "minimized" : (w == front ? "active" : "") };
         x += TASK_BUTTON_W + 6;
     }
+    items[count++] = (struct gui_item){ .name = "Quick settings", .role = GUI_ROLE_BUTTON,
+        .action = ACTION(A_QUICK_BUTTON, 0), .x = screen.width - 132 - START_BUTTON_SIZE - 8, .y = top + 4,
+        .w = START_BUTTON_SIZE, .h = START_BUTTON_SIZE };
     items[count++] = (struct gui_item){ .name = clock_spoken, .role = GUI_ROLE_BUTTON,
         .action = ACTION(A_NONE, 0), .x = screen.width - 132, .y = top + 4, .w = 124,
         .h = START_BUTTON_SIZE };
@@ -145,6 +154,8 @@ void shell_draw_taskbar(int focus, int hovered) {
         }
         if (ACTION_KIND(it->action) == A_START_BUTTON) {
             icon_draw(&screen, ICON_LOGO, it->x + 2, it->y + 2, START_BUTTON_SIZE - 4);
+        } else if (ACTION_KIND(it->action) == A_QUICK_BUTTON) {
+            icon_draw(&screen, ICON_QUICK, it->x + 6, it->y + 6, START_BUTTON_SIZE - 12);
         } else if (ACTION_KIND(it->action) == A_TASKBAR_WINDOW) {
             struct window *w = &windows[ACTION_INDEX(it->action)];
             bool active = it->state != NULL && text_equal(it->state, "active");
@@ -169,7 +180,7 @@ void shell_draw_taskbar(int focus, int hovered) {
     }
 }
 
-// ---- Start menu ----
+// ---- The AREOS launcher (the start menu) ----
 
 #define START_W 400
 #define START_H 560
@@ -254,7 +265,7 @@ void shell_draw_start(int focus, int hovered) {
     gui_circle(&screen, x + 44, y + 46, 26, theme->accent2);
     gui_text_centered(&screen, x + 44, y + 30, initial, 0xFFFFFF, 2);
     gui_text_bold(&screen, x + 84, y + 24, user_name[0] != '\0' ? user_name : "Welcome", theme->text, 2);
-    gui_text(&screen, x + 86, y + 58, "AREOS v0.1", theme->text_dim, 1);
+    gui_text(&screen, x + 86, y + 58, "AREOS launcher", theme->text_dim, 1);
     gui_fill(&screen, x + 16, y + 86, START_W - 32, 1, theme->panel_border);
 
     struct gui_item items[MAX_LAUNCHABLES + 2];
@@ -277,6 +288,175 @@ void shell_draw_start(int focus, int hovered) {
         icon_draw(&screen, icon, it->x + 8, iy + (it->h - 26) / 2, 26);
         gui_text(&screen, it->x + 46, iy + (it->h - 16) / 2, it->name, theme->text, 1);
     }
+}
+
+// ---- Quick settings ----
+// A panel above the clock with the things you change most: toggles for
+// the screen reader, dark mode, a big pointer and the 24-hour clock, and
+// sliders for volume and speech speed.
+
+#define QUICK_W 372
+#define QUICK_H 384
+#define QUICK_ANIM_MS 170
+
+enum { Q_SPEECH, Q_DARK, Q_POINTER, Q_CLOCK, Q_VOLUME, Q_SPEED, Q_ALL_SETTINGS };
+
+static bool quick_open_now = false;
+static bool quick_closing = false;
+static uint64_t quick_anim_start = 0;
+static char volume_text[24], speed_text[24];
+
+static int quick_x(void) { return screen.width - QUICK_W - 8; }
+static int quick_y(void) { return screen.height - TASKBAR_H - 8 - QUICK_H; }
+
+int quick_items(struct gui_item *items, int max) {
+    (void)max;
+    int x = quick_x() + 16, y = quick_y() + 52;
+    int tile_w = (QUICK_W - 48) / 2, tile_h = 60;
+    struct { const char *name; bool on; } tiles[4] = {
+        { "Screen reader", speech_on() },
+        { "Dark mode", !light_mode },
+        { "Large pointer", mouse_size > 0 },
+        { "24-hour clock", clock_24h },
+    };
+    int count = 0;
+    for (int i = 0; i < 4; i++) {
+        items[count++] = (struct gui_item){ .name = tiles[i].name, .role = GUI_ROLE_SWITCH,
+            .action = ACTION(A_QUICK, i), .checked = tiles[i].on,
+            .x = x + (i % 2) * (tile_w + 16), .y = y + (i / 2) * (tile_h + 12), .w = tile_w, .h = tile_h };
+    }
+    volume_text[0] = '\0';
+    text_append_number(volume_text, volume_level(), sizeof(volume_text));
+    text_append(volume_text, "%", sizeof(volume_text));
+    speed_text[0] = '\0';
+    text_append_number(speed_text, speech_speed(), sizeof(speed_text));
+    text_append(speed_text, "%", sizeof(speed_text));
+    int slider_y = y + 2 * (tile_h + 12) + 26;
+    items[count++] = (struct gui_item){ .name = "Volume", .role = GUI_ROLE_SLIDER,
+        .action = ACTION(A_QUICK, Q_VOLUME), .value = volume_text,
+        .x = x, .y = slider_y, .w = QUICK_W - 32, .h = 30 };
+    items[count++] = (struct gui_item){ .name = "Speech speed", .role = GUI_ROLE_SLIDER,
+        .action = ACTION(A_QUICK, Q_SPEED), .value = speed_text,
+        .x = x, .y = slider_y + 54, .w = QUICK_W - 32, .h = 30 };
+    items[count++] = (struct gui_item){ .name = "All settings", .role = GUI_ROLE_BUTTON,
+        .action = ACTION(A_QUICK, Q_ALL_SETTINGS),
+        .x = x, .y = quick_y() + QUICK_H - 50, .w = 140, .h = 36 };
+    return count;
+}
+
+void quick_choose(int index) {
+    switch (index) {
+    case Q_SPEECH:  apply_speech(!speech_on()); break;
+    case Q_DARK:    apply_theme(!light_mode); break;
+    case Q_POINTER: apply_mouse_size(mouse_size > 0 ? 0 : 1); break;
+    case Q_CLOCK:   apply_clock_24h(!clock_24h); break;
+    case Q_VOLUME:
+        if (slider_click >= 0) apply_volume((slider_click + 5) / 10);
+        else if (slider_step != 0) apply_volume(volume_level() + slider_step * 5);
+        break;
+    case Q_SPEED:
+        if (slider_click >= 0) apply_speech_speed(50 + slider_click * 250 / 1000);
+        else if (slider_step != 0) apply_speech_speed(speech_speed() + slider_step * 10);
+        break;
+    case Q_ALL_SETTINGS:
+        quick_close();
+        open_window(WIN_SETTINGS);
+        break;
+    }
+    request_redraw();
+}
+
+void quick_open(void) {
+    quick_open_now = true;
+    quick_closing = false;
+    quick_anim_start = now_ms;
+    request_redraw();
+}
+
+void quick_close(void) {
+    if (!quick_open_now || quick_closing) return;
+    quick_closing = true;
+    quick_anim_start = now_ms;
+    request_redraw();
+}
+
+bool quick_is_open(void) {
+    return quick_open_now && !quick_closing;
+}
+
+bool quick_animating(void) {
+    if (!quick_open_now) return false;
+    if (now_ms - quick_anim_start < QUICK_ANIM_MS) return true;
+    if (quick_closing) {
+        quick_open_now = false;
+        quick_closing = false;
+        request_redraw();
+    }
+    return false;
+}
+
+bool quick_contains(int x, int y) {
+    return quick_is_open() && x >= quick_x() && x < quick_x() + QUICK_W && y >= quick_y() && y < quick_y() + QUICK_H;
+}
+
+// A slider: a track, the filled part up to the value, and a round knob.
+static void draw_slider(struct gui_canvas *c, const struct gui_item *it, int permille, bool focused, bool hovered,
+                        int dy) {
+    int y = it->y + dy;
+    gui_text(c, it->x, y - 20, it->name, theme->text, 1);
+    if (it->value) gui_text(c, it->x + it->w - gui_text_width(it->value, 1), y - 20, it->value, theme->text_dim, 1);
+    int track_y = y + it->h / 2 - 2;
+    int knob_x = it->x + 10 + (it->w - 20) * permille / 1000;
+    gui_rounded(c, it->x + 4, track_y, it->w - 8, 5, 2, theme->panel_border);
+    gui_rounded(c, it->x + 4, track_y, knob_x - it->x - 4, 5, 2, theme->accent);
+    if (focused || hovered) gui_circle(c, knob_x, track_y + 2, 13, gui_blend(theme->panel, theme->accent, 70));
+    gui_circle(c, knob_x, track_y + 2, 9, theme->accent);
+    gui_circle(c, knob_x, track_y + 2, 4, theme->panel);
+    if (focused) gui_frame(c, it->x - 4, y - 2, it->w + 8, it->h + 4, 2, theme->accent);
+}
+
+void shell_draw_quick(int focus, int hovered) {
+    if (!quick_open_now) return;
+    int progress = (int)((now_ms - quick_anim_start) * 1000 / QUICK_ANIM_MS);
+    if (progress > 1000) progress = 1000;
+    int amount = gui_ease_out(progress);
+    if (quick_closing) amount = 1000 - amount;
+    int slide = (1000 - amount) * 40 / 1000;
+    int alpha = amount * 255 / 1000;
+    if (alpha <= 0) return;
+
+    int x = quick_x(), y = quick_y() + slide;
+    if (alpha > 200) gui_shadow(&screen, x, y, QUICK_W, QUICK_H, 16);
+    gui_rounded_alpha(&screen, x, y, QUICK_W, QUICK_H, 12, theme->panel, alpha * 252 / 255);
+    if (alpha < 160) return;
+
+    gui_text_bold(&screen, x + 16, y + 18, "Quick settings", theme->text, 1);
+    struct gui_item items[12];
+    int count = quick_items(items, 12);
+    for (int i = 0; i < count; i++) {
+        struct gui_item *it = &items[i];
+        int iy = it->y + slide;
+        if (it->role == GUI_ROLE_SWITCH) {
+            uint32_t fill = it->checked ? theme->accent : (i == hovered ? theme->hover : theme->background);
+            uint32_t ink = it->checked ? (light_mode ? 0xFFFFFF : 0x06120C) : theme->text;
+            gui_rounded(&screen, it->x, iy, it->w, it->h, 10, fill);
+            gui_text_bold(&screen, it->x + 14, iy + 12, it->name, ink, 1);
+            gui_text(&screen, it->x + 14, iy + 34, it->checked ? "On" : "Off", ink, 1);
+            if (i == focus) gui_frame(&screen, it->x - 3, iy - 3, it->w + 6, it->h + 6, 2, theme->accent2);
+        } else if (it->role == GUI_ROLE_SLIDER) {
+            int permille = ACTION_INDEX(it->action) == Q_VOLUME ? volume_level() * 10
+                                                               : (speech_speed() - 50) * 1000 / 250;
+            draw_slider(&screen, it, permille, i == focus, i == hovered, slide);
+        } else {
+            struct gui_item moved = *it;
+            moved.y = iy;
+            draw_window_item(&screen, &moved, i == focus, i == hovered);
+        }
+    }
+}
+
+void shell_draw_slider(struct gui_canvas *c, const struct gui_item *it, int permille, bool focused, bool hovered) {
+    draw_slider(c, it, permille, focused, hovered, 0);
 }
 
 // ---- Notifications ("toasts") ----

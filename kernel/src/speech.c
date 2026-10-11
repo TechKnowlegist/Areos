@@ -22,6 +22,7 @@
 typedef bool (*speech_sound_fn)(const short *samples, int count, void *user);
 bool speech_engine_init(void *memory, size_t size);
 bool speech_engine_say(const char *text, int speed_percent, speech_sound_fn sound, void *user);
+void speech_engine_set_voice(int index);
 
 // Flite's own messages (it rarely has any) are dropped.
 void speech_libc_debug_write(const char *text, size_t length);
@@ -45,6 +46,7 @@ static volatile bool engine_tried = false;    // the speech thread finished sett
 static volatile bool engine_ok = false;
 static bool enabled = true;
 static int speed_percent = 110;
+static volatile int wanted_voice = 0;
 
 // Pieces waiting to be said. Main adds them, the speech thread takes them.
 static char queue[QUEUE_SIZE][PIECE_MAX + 1];
@@ -157,6 +159,14 @@ static int tidy(const char *text, int length, char *out) {
             const char *say = "Arios";
             for (int k = 0; say[k]; k++) out[n++] = say[k];
             i += 4;
+            continue;
+        }
+        // "Ctrl" is said "Control".
+        if (c == 'C' && i + 4 <= length && text[i + 1] == 't' && text[i + 2] == 'r' && text[i + 3] == 'l'
+            && (i + 4 == length || !is_letter(text[i + 4]))) {
+            const char *say = "Control";
+            for (int k = 0; say[k]; k++) out[n++] = say[k];
+            i += 3;
             continue;
         }
         // Symbols that are just decoration on screen.
@@ -302,7 +312,16 @@ void speech_settings_changed(void) {
     enabled = now_enabled;
     value = 0;
     settings_get(SETTING_SPEECH_SPEED, &value);
-    speed_percent = value == 2 ? 200 : (value == 1 ? 150 : 110);
+    // 0 means "never set": the normal speed. Otherwise it's a percentage.
+    speed_percent = value == 0 ? 110 : (int)value;
+    if (speed_percent < 50) speed_percent = 50;
+    if (speed_percent > 300) speed_percent = 300;
+    value = 0;
+    settings_get(SETTING_SPEECH_VOICE, &value);
+    wanted_voice = (int)value;
+    value = 0;
+    settings_get(SETTING_VOLUME, &value);
+    sound_set_volume(value == 0 ? 100 : (int)value - 1);
 }
 
 void speech_toggle(void) {
@@ -379,6 +398,7 @@ static void speech_thread(void) {
         speaking_generation = which;
         waiting_for_room = false;
         speaking = true;
+        speech_engine_set_voice(wanted_voice);
         speech_engine_say(piece, speed_percent, got_sound, NULL);
         speaking = false;
     }

@@ -20,7 +20,12 @@
 #define SETTING_WALLPAPER    4   // 0 = nebula, 1 = red planet, 2 = plain
 #define SETTING_RETURN_TO    5   // desktop: which app it opened (+1), to come back to
 #define SETTING_SPEECH_OFF   6   // 0 = AREOS speaks (the default), 1 = quiet
-#define SETTING_SPEECH_SPEED 7   // 0 = normal, 1 = fast, 2 = very fast
+#define SETTING_SPEECH_SPEED 7   // 0 = normal (110%), otherwise a percentage (50-300)
+#define SETTING_SPEECH_VOICE 12  // 0 Sally, 1 Rob, 2 Alan, 3 Kal
+#define SETTING_MOUSE_SIZE   13  // 0 normal, 1 large, 2 extra large
+#define SETTING_VOLUME       14  // 0 = full (never set), otherwise volume + 1 (1-101)
+#define SETTING_ACCENT       15  // 0 green, 1 blue, 2 purple, 3 orange, 4 pink
+#define SETTING_CLOCK_24H    16  // 1 = 24-hour clock
 #define SETTING_NAME_FIRST   8   // 8-11: your name, 8 letters per setting
 
 bool settings_get(uint64_t id, uint64_t *value);

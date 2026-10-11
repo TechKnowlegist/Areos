@@ -35,6 +35,12 @@
 #define AREOS_SYS_LAUNCH         16
 #define AREOS_SYS_POWER          17
 #define AREOS_SYS_SPEECH         18
+#define AREOS_SYS_NET_LOOKUP     19
+#define AREOS_SYS_TCP_CONNECT    20
+#define AREOS_SYS_TCP_SEND       21
+#define AREOS_SYS_TCP_RECEIVE    22
+#define AREOS_SYS_TCP_CLOSE      23
+#define AREOS_SYS_NET_ADDRESS    24
 
 // Settings (they last until AREOS is turned off). MUST match kernel/src/settings.h.
 #define AREOS_SETTING_SETUP_DONE  0   // 1 once setup has been finished
@@ -44,7 +50,12 @@
 #define AREOS_SETTING_WALLPAPER   4   // 0 = nebula, 1 = red planet, 2 = plain
 #define AREOS_SETTING_RETURN_TO   5   // desktop: which app it opened (+1), to come back to
 #define AREOS_SETTING_SPEECH_OFF   6   // 0 = AREOS speaks (the default), 1 = quiet
-#define AREOS_SETTING_SPEECH_SPEED 7   // 0 = normal, 1 = fast, 2 = very fast
+#define AREOS_SETTING_SPEECH_SPEED 7   // 0 = normal (110%), otherwise a percentage (50-300)
+#define AREOS_SETTING_SPEECH_VOICE 12  // 0 Sally, 1 Rob, 2 Alan, 3 Kal
+#define AREOS_SETTING_MOUSE_SIZE   13  // 0 normal, 1 large, 2 extra large
+#define AREOS_SETTING_VOLUME       14  // 0 = full (never set), otherwise volume + 1 (1-101)
+#define AREOS_SETTING_ACCENT       15  // 0 green, 1 blue, 2 purple, 3 orange, 4 pink
+#define AREOS_SETTING_CLOCK_24H    16  // 1 = 24-hour clock
 #define AREOS_SETTING_NAME_FIRST  8   // 8-11: the user's name, 8 letters per setting
 
 // The AREOS colors, so programs can match the system's look.
@@ -199,6 +210,8 @@ static inline bool areos_key_event(struct areos_key_event *event) {
 struct areos_mouse_event {
     int dx, dy;        // how far it moved (right and DOWN are positive)
     uint8_t buttons;   // AREOS_MOUSE_ buttons held right now
+    bool absolute;     // true: dx/dy are 0, and x/y say exactly where it is
+    int x, y;          // (absolute only) the pointer's position, in your pixels
 };
 
 // If the mouse moved or a button changed, fill in *event and return true.
@@ -207,9 +220,18 @@ static inline bool areos_mouse_event(struct areos_mouse_event *event) {
     if (result == 0) {
         return false;
     }
-    event->dx = (int16_t)(result & 0xFFFF);
-    event->dy = (int16_t)((result >> 16) & 0xFFFF);
     event->buttons = (uint8_t)((result >> 32) & 0x7);
+    event->absolute = (result >> 41) & 1;
+    if (event->absolute) {
+        // In an emulator, AREOS knows exactly where your pointer is.
+        event->dx = event->dy = 0;
+        event->x = (int)(result & 0xFFFF);
+        event->y = (int)((result >> 16) & 0xFFFF);
+    } else {
+        event->dx = (int16_t)(result & 0xFFFF);
+        event->dy = (int16_t)((result >> 16) & 0xFFFF);
+        event->x = event->y = 0;
+    }
     return true;
 }
 
@@ -258,6 +280,44 @@ static inline bool areos_launch(const char *name, bool come_back) {
 
 static inline void areos_power_off(void)  { areos_syscall(AREOS_SYS_POWER, 0, 0); }
 static inline void areos_restart(void)    { areos_syscall(AREOS_SYS_POWER, 1, 0); }
+
+// ---- Network ----
+// Addresses are one number: 10.0.2.15 is 0x0A00020F.
+
+// Our own address, or 0 if there's no network.
+static inline uint32_t areos_net_address(void) {
+    return (uint32_t)areos_syscall(AREOS_SYS_NET_ADDRESS, 0, 0);
+}
+
+// Look up a name like "example.com". Returns 0 if it can't be found.
+// Takes a moment (it asks a DNS server).
+static inline uint32_t areos_net_lookup(const char *name) {
+    return (uint32_t)areos_syscall(AREOS_SYS_NET_LOOKUP, (uint64_t)name, 0);
+}
+
+// Open a TCP connection. Returns a handle (0 or more), or -1 if it failed.
+// Waits up to 6 seconds.
+static inline int areos_tcp_connect(uint32_t address, uint16_t port) {
+    uint64_t r = areos_syscall(AREOS_SYS_TCP_CONNECT, address, port);
+    return r == (uint64_t)-1 ? -1 : (int)r;
+}
+
+// Send bytes. Returns how many were accepted (maybe fewer: try the rest later).
+static inline int areos_tcp_send(int handle, const void *data, int length) {
+    uint64_t r = areos_syscall3(AREOS_SYS_TCP_SEND, (uint64_t)handle, (uint64_t)data, (uint64_t)length);
+    return r == (uint64_t)-1 ? -1 : (int)r;
+}
+
+// Collect bytes that have arrived. 0 = nothing yet; -1 = the other side
+// has finished and you've read everything.
+static inline int areos_tcp_receive(int handle, void *buffer, int max) {
+    uint64_t r = areos_syscall3(AREOS_SYS_TCP_RECEIVE, (uint64_t)handle, (uint64_t)buffer, (uint64_t)max);
+    return r == (uint64_t)-1 ? -1 : (int)r;
+}
+
+static inline void areos_tcp_close(int handle) {
+    areos_syscall(AREOS_SYS_TCP_CLOSE, (uint64_t)handle, 0);
+}
 
 // The built-in screen reader. Everything printed is read out anyway; these
 // are for interrupting it, or saying something without printing it.

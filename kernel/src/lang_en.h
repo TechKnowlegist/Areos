@@ -23,6 +23,12 @@
 #define STR_SPEECH_NO_SOUND  "Speech: no sound card found, so AREOS can't talk."
 #define STR_SPEECH_FAILED    "Speech: the voice couldn't start, so AREOS can't talk."
 
+// Network
+#define STR_NET_NO_CARD      "Network: no network card found."
+#define STR_NET_NO_ADDRESS   "Network: the card works, but nobody gave us an address."
+#define STR_NET_READY_1      "Network: connected, address "
+#define STR_NET_READY_2      "."
+
 #define STR_BOOT_TIMER      "Timer: ticking 1000 times a second."
 #define STR_BOOT_APPS_1     "Apps: "
 #define STR_BOOT_APPS_2     " found. Type apps to see them."

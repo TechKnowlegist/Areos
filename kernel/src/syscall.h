@@ -32,7 +32,13 @@
 #define SYS_LAUNCH           16  // launch(name, come_back)    - run an app after this one exits
 #define SYS_POWER            17  // power(0 = off, 1 = restart)
 #define SYS_SPEECH           18  // speech(0 = stop talking, 1 = say text at pointer)
-#define SYS_COUNT            19
+#define SYS_NET_LOOKUP       19  // net_lookup(name)              - name to address (0 = not found)
+#define SYS_TCP_CONNECT      20  // tcp_connect(address, port)    - handle, or error
+#define SYS_TCP_SEND         21  // tcp_send(handle, data, length) - bytes accepted
+#define SYS_TCP_RECEIVE      22  // tcp_receive(handle, buffer, max) - bytes, 0 = none yet, error = finished
+#define SYS_TCP_CLOSE        23  // tcp_close(handle)
+#define SYS_NET_ADDRESS      24  // net_address()                - our address (0 = no network)
+#define SYS_COUNT            25
 
 struct interrupt_frame;
 void syscall_dispatch(struct interrupt_frame *frame);

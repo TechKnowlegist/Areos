@@ -1,10 +1,11 @@
 // main.c - the AREOS desktop: start-up, the main loop, keyboard and mouse.
 //
 // Keys on the desktop:
-//   F3 or the Windows key   open/close the Start menu
+//   F3, Alt+Space or the Windows key   open/close the AREOS launcher (the start menu)
+//   Alt+Q                   open/close quick settings
 //   F6 (Shift+F6 back)      move between desktop icons, the taskbar and the front window
-//   Tab / arrows            move;  Enter or Space: open or choose
-//   Escape                  close the Start menu, or the front window
+//   Tab / arrows            move;  Enter or Space: open or choose;  Left/Right: move sliders
+//   Escape                  close the launcher, quick settings, or the front window
 //   F1                      hear the keys;  F2: hear where you are
 //   a letter                jump to the next item starting with it
 // The mouse works too: anything it points at is described in text.
@@ -14,7 +15,14 @@
 // ---- Shared state ----
 
 struct gui_canvas screen;
+static struct gui_theme live_theme;      // the dark or light theme, with your accent colour
 const struct gui_theme *theme = &gui_theme_dark;
+bool light_mode = false;
+int accent_choice = 0;
+int mouse_size = 0;
+bool clock_24h = false;
+int slider_click = -1;
+int slider_step = 0;
 bool detailed = true;
 bool dirty = true;
 int mouse_x, mouse_y;
@@ -27,14 +35,17 @@ struct launchable launchables[MAX_LAUNCHABLES];
 int launchable_count = 0;
 
 static bool running = true;
-static bool shift_held = false;
+bool shift_held = false;
+bool alt_held = false;
+int click_x = -1, click_y = -1;
 static int desktop_focus = 0;
 static int taskbar_focus = 0;
 static int start_focus = 0;
+static int quick_focus = 0;
 static enum zone zone_before_start = ZONE_DESKTOP;
 
 // What the mouse is over (so it's only described when it changes).
-enum area { AREA_NONE, AREA_DESKTOP, AREA_TASKBAR, AREA_START, AREA_WINDOW };
+enum area { AREA_NONE, AREA_DESKTOP, AREA_TASKBAR, AREA_START, AREA_WINDOW, AREA_QUICK };
 static enum area hover_area = AREA_NONE;
 static int hover_index = -1;
 static enum window_kind hover_window = WIN_SETTINGS;
@@ -94,17 +105,80 @@ char to_lower(char c) {
 
 // ---- Settings ----
 
+// Accent colours: one for dark mode, a deeper one that reads well on light.
+static const uint32_t accents_dark[5]  = { 0x3DFF9A, 0x4FC3F7, 0xB388FF, 0xFFAB40, 0xFF80AB };
+static const uint32_t accents_light[5] = { 0x0B7A4B, 0x0B6FA4, 0x6A3FC0, 0xB35C00, 0xB0285E };
+
+static void build_theme(void) {
+    live_theme = light_mode ? gui_theme_light : gui_theme_dark;
+    int a = accent_choice >= 0 && accent_choice < 5 ? accent_choice : 0;
+    live_theme.accent = light_mode ? accents_light[a] : accents_dark[a];
+    // Focused things get a soft wash of the accent colour.
+    live_theme.selected = gui_blend(live_theme.panel, live_theme.accent, light_mode ? 40 : 46);
+    theme = &live_theme;
+}
+
 void apply_theme(bool light) {
-    theme = light ? &gui_theme_light : &gui_theme_dark;
+    light_mode = light;
+    build_theme();
     areos_setting_set(AREOS_SETTING_THEME, light ? 1 : 0);
     wallpaper_build((enum wallpaper_kind)wallpaper_choice, light);
     request_redraw();
 }
 
+void apply_accent(int choice) {
+    accent_choice = choice;
+    build_theme();
+    areos_setting_set(AREOS_SETTING_ACCENT, (uint64_t)choice);
+    request_redraw();
+}
+
+void apply_mouse_size(int size) {
+    mouse_size = size;
+    areos_setting_set(AREOS_SETTING_MOUSE_SIZE, (uint64_t)size);
+    request_redraw();
+}
+
+void apply_clock_24h(bool on) {
+    clock_24h = on;
+    areos_setting_set(AREOS_SETTING_CLOCK_24H, on ? 1 : 0);
+    request_redraw();
+}
+
+bool speech_on(void) {
+    return areos_setting_get(AREOS_SETTING_SPEECH_OFF) == 0;
+}
+
+void apply_speech(bool on) {
+    areos_setting_set(AREOS_SETTING_SPEECH_OFF, on ? 0 : 1);
+}
+
+int speech_speed(void) {
+    uint64_t value = areos_setting_get(AREOS_SETTING_SPEECH_SPEED);
+    return value == 0 ? 110 : (int)value;
+}
+
+void apply_speech_speed(int percent) {
+    if (percent < 50) percent = 50;
+    if (percent > 300) percent = 300;
+    areos_setting_set(AREOS_SETTING_SPEECH_SPEED, (uint64_t)percent);
+}
+
+int volume_level(void) {
+    uint64_t value = areos_setting_get(AREOS_SETTING_VOLUME);
+    return value == 0 ? 100 : (int)value - 1;
+}
+
+void apply_volume(int percent) {
+    if (percent < 0) percent = 0;
+    if (percent > 100) percent = 100;
+    areos_setting_set(AREOS_SETTING_VOLUME, (uint64_t)percent + 1);
+}
+
 void apply_wallpaper(int kind) {
     wallpaper_choice = kind;
     areos_setting_set(AREOS_SETTING_WALLPAPER, (uint64_t)kind);
-    wallpaper_build((enum wallpaper_kind)kind, theme == &gui_theme_light);
+    wallpaper_build((enum wallpaper_kind)kind, light_mode);
     request_redraw();
 }
 
@@ -122,7 +196,13 @@ void save_name(void) {
 }
 
 static void load_settings(void) {
-    theme = areos_setting_get(AREOS_SETTING_THEME) == 1 ? &gui_theme_light : &gui_theme_dark;
+    light_mode = areos_setting_get(AREOS_SETTING_THEME) == 1;
+    uint64_t accent = areos_setting_get(AREOS_SETTING_ACCENT);
+    accent_choice = accent < 5 ? (int)accent : 0;
+    build_theme();
+    uint64_t pointer = areos_setting_get(AREOS_SETTING_MOUSE_SIZE);
+    mouse_size = pointer <= 2 ? (int)pointer : 0;
+    clock_24h = areos_setting_get(AREOS_SETTING_CLOCK_24H) == 1;
     detailed = areos_setting_get(AREOS_SETTING_VERBOSITY) == 0;
     uint64_t wall = areos_setting_get(AREOS_SETTING_WALLPAPER);
     wallpaper_choice = wall <= WALLPAPER_PLAIN ? (int)wall : WALLPAPER_NEBULA;
@@ -150,6 +230,7 @@ static void add_launchable(const char *label, enum icon_kind icon, enum launch_t
 static void load_launchables(void) {
     add_launchable("Calculator", ICON_CALCULATOR, LAUNCH_WINDOW, WIN_CALCULATOR, "", true);
     add_launchable("Notes", ICON_NOTES, LAUNCH_WINDOW, WIN_NOTES, "", true);
+    add_launchable("Browser", ICON_BROWSER, LAUNCH_WINDOW, WIN_BROWSER, "", true);
     // Every .arx app on the disc (except this desktop).
     char file[40];
     for (int i = 0; areos_app_name(i, file, sizeof(file)); i++) {
@@ -173,6 +254,7 @@ static int zone_items(enum zone z, struct gui_item *items, int max) {
     case ZONE_DESKTOP: return desktop_items(items, max);
     case ZONE_TASKBAR: return taskbar_items(items, max);
     case ZONE_START:   return start_items(items, max);
+    case ZONE_QUICK:   return quick_items(items, max);
     case ZONE_WINDOW: {
         struct window *w = window_top();
         return w != NULL ? window_items(w, items, max) : 0;
@@ -186,6 +268,7 @@ static int *zone_focus(enum zone z) {
     case ZONE_DESKTOP: return &desktop_focus;
     case ZONE_TASKBAR: return &taskbar_focus;
     case ZONE_START:   return &start_focus;
+    case ZONE_QUICK:   return &quick_focus;
     case ZONE_WINDOW: {
         struct window *w = window_top();
         return w != NULL ? &w->focus : &desktop_focus;
@@ -213,7 +296,8 @@ static void announce_zone_name(void) {
     switch (zone) {
     case ZONE_DESKTOP: gui_announce("Desktop icons."); break;
     case ZONE_TASKBAR: gui_announce("Taskbar."); break;
-    case ZONE_START:   gui_announce("Start menu."); break;
+    case ZONE_START:   gui_announce("AREOS launcher."); break;
+    case ZONE_QUICK:   gui_announce("Quick settings."); break;
     case ZONE_WINDOW: {
         struct window *w = window_top();
         gui_line_start();
@@ -269,15 +353,25 @@ void set_zone(enum zone z, bool announce) {
 }
 
 static void announce_help(void) {
-    gui_announce("Keys: F3 or the Windows key opens the Start menu. "
+    gui_announce("Keys: F3, Alt+Space or the Windows key opens the AREOS launcher. "
+                 "Alt+Q opens quick settings. "
                  "F6 moves between the desktop icons, the taskbar and the front window; Shift+F6 goes back. "
-                 "Tab or the arrow keys move. Enter or Space opens or chooses. "
-                 "Escape closes the Start menu or the front window. "
+                 "Tab or the arrow keys move. Enter or Space opens or chooses. Left and Right move sliders. "
+                 "Escape closes the launcher, quick settings or the front window. "
+                 "Alt+Shift with Left or Right snaps the window to half the screen, Up maximizes it, Down restores or minimizes it. "
+                 "Alt+L, Alt+R and Alt+M do the same from the terminal. "
                  "F2 says where you are. Typing a letter jumps to the next item starting with it. "
                  "Ctrl stops the voice talking, and Ctrl+Alt+S turns the voice off or on.");
 }
 
 // ---- Doing things ----
+
+static void open_window_announced(enum window_kind kind);
+void open_window(enum window_kind kind) {
+    if (quick_is_open()) quick_close();
+    if (start_is_open()) start_close();
+    open_window_announced(kind);
+}
 
 static void open_window_announced(enum window_kind kind) {
     struct window *w = &windows[kind];
@@ -338,12 +432,37 @@ static void choose_action(int action) {
             start_close();
             set_zone(zone_before_start, true);
         } else {
-            zone_before_start = zone == ZONE_START ? ZONE_DESKTOP : zone;
+            if (quick_is_open()) quick_close();
+            zone_before_start = (zone == ZONE_START || zone == ZONE_QUICK) ? ZONE_DESKTOP : zone;
             start_open();
             start_focus = 0;
             set_zone(ZONE_START, true);
         }
         break;
+    case A_QUICK_BUTTON:
+        if (quick_is_open()) {
+            quick_close();
+            set_zone(zone_before_start, true);
+        } else {
+            if (start_is_open()) start_close();
+            zone_before_start = (zone == ZONE_START || zone == ZONE_QUICK) ? ZONE_DESKTOP : zone;
+            quick_open();
+            quick_focus = 0;
+            set_zone(ZONE_QUICK, true);
+        }
+        break;
+    case A_QUICK: {
+        quick_choose(index);
+        if (zone == ZONE_QUICK && quick_is_open()) {
+            struct gui_item items[24];
+            int count = quick_items(items, 24);
+            if (quick_focus < count && (items[quick_focus].role == GUI_ROLE_SWITCH
+                                        || items[quick_focus].role == GUI_ROLE_SLIDER)) {
+                announce_item(items, count, quick_focus);
+            }
+        }
+        break;
+    }
     case A_TASKBAR_WINDOW: {
         struct window *w = &windows[index];
         if (!w->minimized && window_top() == w) {
@@ -367,6 +486,21 @@ static void choose_action(int action) {
         focus_after_window_change();
         break;
     }
+    case A_MAXIMIZE: {
+        struct window *w = &windows[index];
+        if (!window_app_for(w->kind)->resizable) {
+            gui_announce("This window can't change size.");
+            break;
+        }
+        window_toggle_maximize(w);
+        gui_line_start();
+        gui_line_add(w->title);
+        gui_line_add(" ");
+        gui_line_add(window_snap_words(w));
+        gui_line_add(".");
+        gui_line_say();
+        break;
+    }
     case A_CLOSE:
         window_close((enum window_kind)index);
         gui_line_start();
@@ -386,13 +520,14 @@ static void choose_action(int action) {
     case A_CONTENT: {
         struct window *w = window_top();
         if (w == NULL) break;
-        const struct window_app *apps[] = { &app_settings, &app_about, &app_calculator, &app_notes };
-        apps[w->kind]->choose(index);
+        window_app_for(w->kind)->choose(index);
         // A radio button changes state: say its new state.
         struct gui_item items[48];
         int count = window_items(w, items, 48);
-        if (zone == ZONE_WINDOW && w == window_top() && w->focus < count
-            && items[w->focus].role == GUI_ROLE_RADIO && !setup_active()) {
+        enum gui_role role = w->focus < count ? items[w->focus].role : GUI_ROLE_BUTTON;
+        if (zone == ZONE_WINDOW && w == window_top() && w->focus < count && !setup_active()
+            && (role == GUI_ROLE_RADIO || role == GUI_ROLE_SWITCH || role == GUI_ROLE_TAB
+                || (role == GUI_ROLE_SLIDER && slider_click >= 0))) {
             announce_item(items, count, w->focus);
         }
         break;
@@ -437,10 +572,52 @@ static void cycle_zone(int direction) {
     enum zone ring[3] = { ZONE_DESKTOP, ZONE_TASKBAR, ZONE_WINDOW };
     int ring_size = window_top() != NULL ? 3 : 2;
     if (start_is_open()) start_close();
+    if (quick_is_open()) quick_close();
     int position = 0;
     for (int i = 0; i < ring_size; i++) if (ring[i] == zone) position = i;
     position = (position + direction + ring_size) % ring_size;
     set_zone(ring[position], true);
+}
+
+// Window management by keyboard: direction 0 left, 1 right, 2 up (maximize), 3 down (restore or minimize),
+// 4 maximize/restore.
+static void window_command(int direction) {
+    struct window *w = window_top();
+    if (w == NULL) {
+        gui_announce("There's no window to move.");
+        return;
+    }
+    if (!window_app_for(w->kind)->resizable) {
+        if (direction == 3) {
+            choose_action(ACTION(A_MINIMIZE, w->kind));
+        } else {
+            gui_line_start();
+            gui_line_add(w->title);
+            gui_line_add(" can't change size.");
+            gui_line_say();
+        }
+        return;
+    }
+    if (direction == 4) window_toggle_maximize(w);
+    else {
+        bool was_minimizing = direction == 3 && w->snap == SNAP_NONE;
+        window_snap_key(w, direction);
+        if (was_minimizing) {
+            gui_line_start();
+            gui_line_add(w->title);
+            gui_line_add(" minimized. It's on the taskbar.");
+            gui_line_say();
+            focus_after_window_change();
+            return;
+        }
+    }
+    gui_line_start();
+    gui_line_add(w->title);
+    gui_line_add(" ");
+    gui_line_add(window_snap_words(w));
+    gui_line_add(".");
+    gui_line_say();
+    request_redraw();
 }
 
 static void handle_key(struct areos_key_event *e) {
@@ -448,7 +625,26 @@ static void handle_key(struct areos_key_event *e) {
         shift_held = e->pressed;
         return;
     }
+    if (e->key == AREOS_KEY_ALT) {
+        alt_held = e->pressed;
+        return;
+    }
     if (!e->pressed) return;
+
+    // Alt+Space opens or closes the AREOS launcher (like F3 or the Windows key);
+    // Alt+Q opens quick settings.
+    if (alt_held && e->key == ' ') { choose_action(ACTION(A_START_BUTTON, 0)); return; }
+    if (alt_held && e->key == 'q') { choose_action(ACTION(A_QUICK_BUTTON, 0)); return; }
+
+    // Window management: Alt+Shift+arrows (Left/Right snap to half the screen, Up maximizes,
+    // Down restores or minimizes), or Alt+L, Alt+R and Alt+M, which also work from the terminal.
+    if (alt_held && shift_held && e->key == AREOS_KEY_LEFT)  { window_command(0); return; }
+    if (alt_held && shift_held && e->key == AREOS_KEY_RIGHT) { window_command(1); return; }
+    if (alt_held && shift_held && e->key == AREOS_KEY_UP)    { window_command(2); return; }
+    if (alt_held && shift_held && e->key == AREOS_KEY_DOWN)  { window_command(3); return; }
+    if (alt_held && e->key == 'l') { window_command(0); return; }
+    if (alt_held && e->key == 'r') { window_command(1); return; }
+    if (alt_held && e->key == 'm') { window_command(4); return; }
 
     // Keys that work everywhere.
     if (e->key == AREOS_KEY_F1) { announce_help(); return; }
@@ -463,10 +659,30 @@ static void handle_key(struct areos_key_event *e) {
             set_zone(ZONE_DESKTOP, true);
             return;
         }
-        const struct window_app *apps[] = { &app_settings, &app_about, &app_calculator, &app_notes };
         struct gui_item items[48];
         int count = window_items(w, items, 48);
-        if (w->focus < count - 2 && apps[w->kind]->key(e, items, count, &w->focus)) {
+        if (w->focus < count - TITLE_ITEMS && window_app_for(w->kind)->key(e, items, count, &w->focus)) {
+            request_redraw();
+            return;
+        }
+    }
+
+    // Sliders: Left and Right move them (Page Up / Page Down in bigger steps).
+    if (e->key == AREOS_KEY_LEFT || e->key == AREOS_KEY_RIGHT
+        || e->key == AREOS_KEY_PAGE_UP || e->key == AREOS_KEY_PAGE_DOWN) {
+        struct gui_item items[48];
+        int count = zone_items(zone, items, 48);
+        int *focus = zone_focus(zone);
+        if (*focus >= 0 && *focus < count && items[*focus].role == GUI_ROLE_SLIDER) {
+            int step = (e->key == AREOS_KEY_LEFT || e->key == AREOS_KEY_PAGE_DOWN) ? -1 : 1;
+            if (e->key == AREOS_KEY_PAGE_UP || e->key == AREOS_KEY_PAGE_DOWN) step *= 5;
+            slider_step = step;
+            if (zone == ZONE_QUICK) quick_choose(ACTION_INDEX(items[*focus].action));
+            else if (zone == ZONE_WINDOW && window_top() != NULL)
+                window_app_for(window_top()->kind)->choose(ACTION_INDEX(items[*focus].action));
+            slider_step = 0;
+            count = zone_items(zone, items, 48);
+            if (*focus < count && items[*focus].value != NULL) gui_announce(items[*focus].value);
             request_redraw();
             return;
         }
@@ -508,6 +724,9 @@ static void handle_key(struct areos_key_event *e) {
         if (zone == ZONE_START) {
             start_close();
             set_zone(zone_before_start, true);
+        } else if (zone == ZONE_QUICK) {
+            quick_close();
+            set_zone(zone_before_start, true);
         } else if (zone == ZONE_WINDOW && window_top() != NULL) {
             choose_action(ACTION(A_CLOSE, window_top()->kind));
         }
@@ -537,6 +756,12 @@ static enum area hit_test(int *index, const char **name, enum window_kind *which
         *index = item_at(items, count, mouse_x, mouse_y);
         if (*index >= 0) *name = items[*index].name;
         return AREA_START;
+    }
+    if (quick_contains(mouse_x, mouse_y)) {
+        int count = quick_items(items, 48);
+        *index = item_at(items, count, mouse_x, mouse_y);
+        if (*index >= 0) *name = items[*index].name;
+        return AREA_QUICK;
     }
     struct window *w = window_at(mouse_x, mouse_y);
     if (w != NULL) {
@@ -588,19 +813,27 @@ static void describe_hover(void) {
     }
 }
 
+static struct window *last_title_window = NULL;
+static uint64_t last_title_ms = 0;
+static bool drag_from_snap = false;
+
 static void handle_click(void) {
     int index;
     const char *name;
     enum window_kind which = WIN_SETTINGS;
 
-    // Clicking outside an open Start menu just closes it.
-    if (start_is_open() && !start_contains(mouse_x, mouse_y)) {
-        bool on_start_button = mouse_y >= screen.height - TASKBAR_H && mouse_x < 60;
-        if (!on_start_button) {
-            start_close();
-            set_zone(zone_before_start, false);
-            return;
-        }
+    // Clicking outside an open launcher or quick settings just closes it
+    // (unless it's on the taskbar button that opens it: that toggles it).
+    bool on_taskbar = mouse_y >= screen.height - TASKBAR_H;
+    if (start_is_open() && !start_contains(mouse_x, mouse_y) && !(on_taskbar && mouse_x < 60)) {
+        start_close();
+        set_zone(zone_before_start, false);
+        return;
+    }
+    if (quick_is_open() && !quick_contains(mouse_x, mouse_y) && !on_taskbar) {
+        quick_close();
+        set_zone(zone_before_start, false);
+        return;
     }
 
     enum area area = hit_test(&index, &name, &which);
@@ -614,11 +847,40 @@ static void handle_click(void) {
             (void)count;
         }
         break;
+    case AREA_QUICK:
+        if (index >= 0) {
+            int count = quick_items(items, 48);
+            quick_focus = index;
+            zone = ZONE_QUICK;
+            if (items[index].role == GUI_ROLE_SLIDER) {
+                slider_click = (mouse_x - items[index].x) * 1000 / (items[index].w > 0 ? items[index].w : 1);
+            }
+            choose_action(items[index].action);
+            slider_click = -1;
+            (void)count;
+        }
+        break;
     case AREA_WINDOW: {
         struct window *w = &windows[which];
         if (window_top() != w) window_focus(which);
         zone = ZONE_WINDOW;
         if (index < 0 && window_title_at(w, mouse_x, mouse_y)) {
+            // Double-click the title bar: maximize, or restore.
+            if (last_title_window == w && now_ms - last_title_ms < 500 && window_app_for(w->kind)->resizable) {
+                last_title_window = NULL;
+                window_toggle_maximize(w);
+                gui_line_start();
+                gui_line_add(w->title);
+                gui_line_add(" ");
+                gui_line_add(window_snap_words(w));
+                gui_line_add(".");
+                gui_line_say();
+                break;
+            }
+            last_title_window = w;
+            last_title_ms = now_ms;
+            drag_from_snap = w->snap != SNAP_NONE;
+            if (drag_from_snap) window_unsnap_for_drag(w, mouse_x);
             dragging = w;              // start dragging the window by its title bar
             drag_dx = mouse_x - w->x;
             drag_dy = mouse_y - w->y;
@@ -629,7 +891,15 @@ static void handle_click(void) {
                 int count = window_items(w, items, 48);
                 announce_item(items, count, index);
             } else {
+                if (items[index].role == GUI_ROLE_SLIDER) {
+                    int local_x = mouse_x - w->x - items[index].x;
+                    slider_click = local_x * 1000 / (items[index].w > 0 ? items[index].w : 1);
+                }
+                click_x = mouse_x - w->x;
+                click_y = mouse_y - w->y - TITLE_BAR_H;
                 choose_action(items[index].action);
+                slider_click = -1;
+                click_x = click_y = -1;
             }
         }
         break;
@@ -665,8 +935,13 @@ static void handle_click(void) {
 }
 
 static void handle_mouse(struct areos_mouse_event *e) {
-    mouse_x += e->dx;
-    mouse_y += e->dy;
+    if (e->absolute) {
+        mouse_x = e->x;     // right under your real pointer
+        mouse_y = e->y;
+    } else {
+        mouse_x += e->dx;
+        mouse_y += e->dy;
+    }
     if (mouse_x < 0) mouse_x = 0;
     if (mouse_y < 0) mouse_y = 0;
     if (mouse_x >= screen.width) mouse_x = screen.width - 1;
@@ -684,7 +959,24 @@ static void handle_mouse(struct areos_mouse_event *e) {
     }
     if (dragging != NULL) {
         if (!left) {
+            // Let go at a screen edge: snap to it (left or right half, or maximize at the top).
+            struct window *w = dragging;
             dragging = NULL;
+            if (window_app_for(w->kind)->resizable && w->y < screen.height - TASKBAR_H) {
+                int snap = SNAP_NONE;
+                if (mouse_x <= 1) snap = SNAP_LEFT;
+                else if (mouse_x >= screen.width - 2) snap = SNAP_RIGHT;
+                else if (mouse_y <= 1) snap = SNAP_MAXIMIZED;
+                if (snap != SNAP_NONE) {
+                    window_set_snap(w, snap);
+                    gui_line_start();
+                    gui_line_add(w->title);
+                    gui_line_add(" ");
+                    gui_line_add(window_snap_words(w));
+                    gui_line_add(".");
+                    gui_line_say();
+                }
+            }
         } else {
             dragging->x = mouse_x - drag_dx;
             dragging->y = mouse_y - drag_dy;
@@ -705,11 +997,13 @@ static const char *pointer_rows[] = {
 };
 
 static void draw_pointer(void) {
+    int size = 2 + mouse_size;   // pixels per dot: normal 2, large 3, extra large 4
     for (int row = 0; row < 16; row++) {
         for (int col = 0; pointer_rows[row][col] != '\0'; col++) {
             char p = pointer_rows[row][col];
             if (p == '#' || p == '.') {
-                gui_fill(&screen, mouse_x + col * 2, mouse_y + row * 2, 2, 2, p == '#' ? 0x000000 : 0xFFFFFF);
+                gui_fill(&screen, mouse_x + col * size, mouse_y + row * size, size, size,
+                         p == '#' ? 0x000000 : 0xFFFFFF);
             }
         }
     }
@@ -727,6 +1021,8 @@ static void draw(void) {
                            hover_area == AREA_TASKBAR ? hover_index : -1);
         shell_draw_start(zone == ZONE_START ? start_focus : -1,
                          hover_area == AREA_START ? hover_index : -1);
+        shell_draw_quick(zone == ZONE_QUICK ? quick_focus : -1,
+                         hover_area == AREA_QUICK ? hover_index : -1);
         toast_draw();
     }
     draw_pointer();
@@ -760,7 +1056,7 @@ void desktop_enter(bool after_setup) {
     }
     announce_where();
     if (detailed) {
-        gui_announce("Press F3 for the Start menu, F6 to move between areas, F1 for all the keys.");
+        gui_announce("Press F3 or Alt+Space for the AREOS launcher, Alt+Q for quick settings, F6 to move between areas, F1 for all the keys.");
     }
     if (after_setup) {
         char text[96] = "Welcome to AREOS";
@@ -791,10 +1087,12 @@ int main(void) {
     mouse_y = screen.height / 2;
     now_ms = areos_time_ms();
 
+    // Whatever the command line was still saying, the desktop's news comes first.
+    areos_speech_stop();
     load_settings();
     load_launchables();
     wallpaper_init(screen.width, screen.height);
-    wallpaper_build((enum wallpaper_kind)wallpaper_choice, theme == &gui_theme_light);
+    wallpaper_build((enum wallpaper_kind)wallpaper_choice, light_mode);
     windows_init();
     shell_init();
 
@@ -816,7 +1114,11 @@ int main(void) {
         if (!running) break;
 
         windows_update();
-        bool animating = windows_animating() || start_animating() || toast_active();
+        for (int k = 0; k < WIN_COUNT; k++) {
+            const struct window_app *app = window_app_for((enum window_kind)k);
+            if (windows[k].open && app->tick != NULL) { window_context(&windows[k]); app->tick(); }
+        }
+        bool animating = windows_animating() || start_animating() || quick_animating() || toast_active();
         int minute = areos_date_time().minute;
         if (minute != last_minute) {
             last_minute = minute;

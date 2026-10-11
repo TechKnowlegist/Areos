@@ -121,6 +121,18 @@ void sound_queue(const int16_t *samples, uint32_t count) {
     ring_write = w;
 }
 
+void sound_set_volume(int percent) {
+    if (!ready) return;
+    if (percent <= 0) {
+        outw(mixer + MIXER_MASTER_VOLUME, 0x8000);   // mute
+        return;
+    }
+    if (percent > 100) percent = 100;
+    // The card counts "how much quieter" in 1.5 dB steps, 0-31.
+    uint16_t quieter = (uint16_t)((100 - percent) * 31 / 100);
+    outw(mixer + MIXER_MASTER_VOLUME, (uint16_t)((quieter << 8) | quieter));
+}
+
 void sound_flush(void) {
     flush_requested = true;
 }

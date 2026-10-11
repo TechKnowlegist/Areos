@@ -1,7 +1,7 @@
 // host_test.c - try the speech engine on Linux, without AREOS.
 // Builds as a bare program (no C library) that writes a .wav file, so the
 // engine and its small C library are tested exactly as the kernel uses them.
-//   usage: host_test out.wav "text to say" [speed%]
+//   usage: host_test out.wav "text to say" [speed%] [voice 0-3]
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -36,6 +36,7 @@ int main_c(long argc, char **argv) {
     int speed = 100;
     if (argc > 3) { speed = 0; for (char *p = argv[3]; *p; p++) speed = speed * 10 + (*p - '0'); }
     if (!speech_engine_init(arena, sizeof(arena))) { speech_libc_debug_write("init failed\n", 12); return 1; }
+    if (argc > 4) speech_engine_set_voice(argv[4][0] - '0');
     if (!speech_engine_say(argv[2], speed, got, NULL)) { speech_libc_debug_write("say failed\n", 11); return 1; }
     unsigned char h[44] = "RIFF....WAVEfmt ";
     put32(h + 4, 36 + count * 2); put32(h + 16, 16); h[20] = 1; h[21] = 0; h[22] = 1; h[23] = 0;

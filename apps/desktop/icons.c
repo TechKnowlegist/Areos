@@ -172,6 +172,24 @@ void icon_draw(struct gui_canvas *c, enum icon_kind kind, int x, int y, int s) {
         triangle(c, cx + s / 12, y + s * 12 / 100, cx + s / 12, y + s * 34 / 100, cx + s / 4, y + s * 22 / 100, 0x4FC3F7);
         break;
 
+    case ICON_BROWSER:
+        // A globe: a blue ball with lines of latitude and longitude.
+        tile(c, x, y, s, 0x1F5FA8);
+        gui_circle(c, cx, cy, s * 3 / 10, 0x8FD3FF);
+        gui_ring(c, cx, cy, s * 3 / 10, line, WHITE);
+        gui_fill(c, cx - s * 3 / 10, cy - line / 2, s * 3 / 5, line, WHITE);
+        gui_fill(c, cx - line / 2, cy - s * 3 / 10, line, s * 3 / 5, WHITE);
+        gui_fill(c, cx - s / 4, cy - s * 15 / 100, s / 2, line > 1 ? line - 1 : 1, WHITE);
+        gui_fill(c, cx - s / 4, cy + s * 15 / 100, s / 2, line > 1 ? line - 1 : 1, WHITE);
+        gui_ring(c, cx, cy, s / 8, line > 1 ? line - 1 : 1, WHITE);
+        break;
+    case ICON_QUICK:
+        // Two sliders: quick settings.
+        gui_fill(c, x + s / 6, y + s / 3, s * 2 / 3, line, theme->text);
+        gui_fill(c, x + s / 6, y + s * 2 / 3, s * 2 / 3, line, theme->text);
+        gui_circle(c, x + s * 2 / 5, y + s / 3, s / 9 + 1, theme->accent);
+        gui_circle(c, x + s * 2 / 3, y + s * 2 / 3, s / 9 + 1, theme->accent);
+        break;
     case ICON_PROGRAM:
     default:
         tile(c, x, y, s, 0x2E5E8A);
@@ -184,6 +202,7 @@ void icon_draw(struct gui_canvas *c, enum icon_kind kind, int x, int y, int s) {
 // Pick an icon for an app from its name.
 enum icon_kind icon_for_app(const char *label) {
     if (text_equal(label, "Starfield")) return ICON_STARFIELD;
+    if (text_equal(label, "Browser")) return ICON_BROWSER;
     if (text_equal(label, "Hello")) return ICON_HELLO;
     if (text_equal(label, "Countdown")) return ICON_COUNTDOWN;
     if (text_equal(label, "Oops")) return ICON_OOPS;

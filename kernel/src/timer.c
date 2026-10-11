@@ -1,5 +1,6 @@
 // timer.c - AREOS's clock.
 
+#include "net.h"
 #include "speech.h"
 #include "thread.h"
 #include "timer.h"
@@ -18,6 +19,7 @@ static void on_tick(struct interrupt_frame *frame) {
     (void)frame;
     ticks++;
     speech_tick();   // keep the sound card fed, speak paused lines
+    net_tick();      // pick up network packets, resend lost ones
 }
 
 void timer_init(void) {

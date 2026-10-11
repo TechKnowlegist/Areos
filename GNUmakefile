@@ -19,6 +19,23 @@ ifneq ($(AUDIO),)
     QEMUFLAGS += -audiodev $(AUDIO),id=sound -device AC97,audiodev=sound
 endif
 
+# One pointer, not two: AREOS draws its own mouse pointer, so hide the
+# window's (Windows') pointer while it is over the AREOS screen.
+# Turn this off with: make run-bios HIDE_HOST_POINTER=no
+HIDE_HOST_POINTER := yes
+override QEMU_DISPLAYS := $(shell qemu-system-$(ARCH) -display help 2>/dev/null)
+ifeq ($(HIDE_HOST_POINTER),yes)
+    ifneq ($(filter gtk,$(QEMU_DISPLAYS)),)
+        QEMUFLAGS += -display gtk,show-cursor=off
+    else ifneq ($(filter sdl,$(QEMU_DISPLAYS)),)
+        QEMUFLAGS += -display sdl,show-cursor=off
+    endif
+endif
+
+# A network card (Intel e1000), connected to the internet through your
+# computer's own connection.
+QEMUFLAGS += -nic user,model=e1000
+
 # Internal architecture specific variables that should not be changed by the
 # user. x86_64 images get an MBR, the most portable form for BIOS and UEFI.
 override XORRISO_BIOS_FLAGS :=

@@ -22,6 +22,8 @@ static bool serial_next_byte(char *out) {
     return false;
 }
 
+static char alt_character;   // the key that came with Alt (see KEY_ALT_CHAR)
+
 // Read one key from the terminal and translate it into an AREOS key code.
 // Terminals send Enter as '\r', Backspace as 127 (or 8), and arrow keys
 // as three bytes: Escape, '[', then A/B/C/D.
@@ -32,6 +34,12 @@ static bool serial_read_code(uint8_t *out) {
             char second, third;
             if (!serial_next_byte(&second)) {
                 *out = KEY_ESCAPE;  // Escape on its own
+                return true;
+            }
+            if (second == ' ' || (second >= 'a' && second <= 'z')) {
+                // Terminals send Alt+key as Escape, then the key (Alt+Space, Alt+Q...).
+                alt_character = second;
+                *out = KEY_ALT_CHAR;
                 return true;
             }
             if ((second == '[' || second == 'O') && serial_next_byte(&third)) {
@@ -176,6 +184,12 @@ bool input_try_get_event(struct key_event *out) {
         queue_serial_event(KEY_TAB, true, 0);
         queue_serial_event(KEY_TAB, false, 0);
         queue_serial_event(KEY_SHIFT, false, 0);
+    } else if (code == KEY_ALT_CHAR) {
+        // Alt+key: Alt down, key down, key up, Alt up.
+        queue_serial_event(KEY_ALT, true, 0);
+        queue_serial_event((uint8_t)alt_character, true, alt_character);
+        queue_serial_event((uint8_t)alt_character, false, 0);
+        queue_serial_event(KEY_ALT, false, 0);
     } else {
         char character = (code < 0x80 && code != KEY_ESCAPE) ? (char)code : 0;
         queue_serial_event(to_lower(code), true, character);

@@ -14,7 +14,7 @@ static struct gui_item items[8];
 static int count = 0;
 static int focus = 0;
 static int hovered = -1;
-static bool shift_held = false;
+// (shift_held is shared with the rest of the desktop: see desktop.h)
 
 #define CARD_W 860
 #define CARD_H 600
@@ -44,7 +44,7 @@ static void add_choice(const char *name, int action, bool checked, int index) {
 
 static void build(void) {
     count = 0;
-    bool light = theme == &gui_theme_light;
+    bool light = light_mode;
     switch (page) {
     case WELCOME:
         add_back_next("Get started", ACT_NEXT, false);
@@ -144,6 +144,11 @@ bool setup_active(void) {
 
 void setup_begin(void) {
     active = true;
+    // First words a screen reader user hears: how to turn the voice off.
+    if (speech_on()) {
+        areos_speech_stop();
+        gui_announce("AREOS is running with a screen reader. Press Control plus Alt plus S to turn it off.");
+    }
     go_to(WELCOME);
 }
 

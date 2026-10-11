@@ -20,4 +20,9 @@ bool speech_engine_say(const char *text, int speed_percent, speech_sound_fn soun
 
 int speech_engine_sample_rate(void);
 
+// The voices: how many, what each is called, and which to speak with.
+int speech_engine_voice_count(void);
+const char *speech_engine_voice_name(int index);
+void speech_engine_set_voice(int index);
+
 #endif

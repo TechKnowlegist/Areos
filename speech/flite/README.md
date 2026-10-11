@@ -20,6 +20,8 @@ the CMU pronouncing dictionary (`lang/cmulex`) and the "slt" voice
 - `src/areos_stubs.c` (new): loading voices from files or the internet,
   saving `.wav` files and Linux sound output all just fail, as AREOS has
   none of those yet.
+- `src/cg/cst_spamf0.c`: one line marked "AREOS": the voice's pitch is multiplied by
+  Flite's `f0_shift` setting, so the Rob voice can be made higher or deeper too.
 - `lang/cmulex`: four data files that are `#include`d by others were renamed
   from `.c` to `.inc`, so the build doesn't compile them on their own.
 - Left out: the audio drivers, sockets, `cst_args`, `cst_url`, `cst_ssml`, the
