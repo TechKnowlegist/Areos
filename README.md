@@ -25,7 +25,7 @@ The goals:
 ## Progress
 
 - [x] Boots in QEMU
-- [ ] Print text
+- [x] Print text
 - [ ] Keyboard input
 - [ ] Shell
 - [ ] Memory management
@@ -46,7 +46,8 @@ Then run:
 
 Started from the [Limine C Template](https://github.com/limine-bootloader/limine-c-template). Boots with the [Limine](https://github.com/limine-bootloader/limine) bootloader.
 
+The built-in console font is a bitmap rendering of [DejaVu Sans Mono](https://dejavu-fonts.github.io/) Bold.
+
 ## License
 
 See [LICENSE](LICENSE).
-
