@@ -45,6 +45,10 @@ void console_hide_cursor(void);
 // Draw (on = true) or blank (on = false) the cursor, for blinking.
 void console_blink_cursor(bool on);
 
+// Stop (true) or restart (false) drawing on the screen. Text still goes
+// to the terminal either way. Used while a program shows graphics.
+void console_pause_screen(bool paused);
+
 // Print a whole number, like 2048.
 void console_print_number(uint64_t number);
 

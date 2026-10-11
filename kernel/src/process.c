@@ -6,6 +6,7 @@
 #include "pmm.h"
 #include "idt.h"
 #include "memory.h"
+#include "graphics.h"
 
 // Where things go in a program's memory (its own private half).
 #define USER_STACK_TOP     0x0000700000000000ULL
@@ -227,6 +228,7 @@ struct run_result process_run(const void *file, size_t size) {
 }
 
 void process_exit(uint64_t exit_code) {
+    graphics_stop();  // if the program left graphics on, put the text screen back
     current.result.exit_code = exit_code;
     current.running = false;
     vmm_switch_to_kernel();
@@ -256,4 +258,34 @@ uint64_t process_more_memory(uint64_t bytes) {
     }
     current.heap_end += pages * PAGE_SIZE;
     return address;
+}
+
+// ---- Launching another app ----
+
+static struct {
+    bool requested;
+    bool come_back;
+    char name[LAUNCH_NAME_MAX];
+} launch;
+
+void process_request_launch(const char *name, bool come_back) {
+    size_t i = 0;
+    for (; name[i] != '\0' && i < LAUNCH_NAME_MAX - 1; i++) {
+        launch.name[i] = name[i];
+    }
+    launch.name[i] = '\0';
+    launch.come_back = come_back;
+    launch.requested = true;
+}
+
+bool process_take_launch(char *name, bool *come_back) {
+    if (!launch.requested) {
+        return false;
+    }
+    for (size_t i = 0; i < LAUNCH_NAME_MAX; i++) {
+        name[i] = launch.name[i];
+    }
+    *come_back = launch.come_back;
+    launch.requested = false;
+    return true;
 }

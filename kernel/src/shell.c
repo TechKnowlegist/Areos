@@ -18,6 +18,8 @@
 #include "timer.h"
 #include "input.h"
 #include "files.h"
+#include "power.h"
+#include "settings.h"
 #include "process.h"
 #include "pmm.h"
 #include "panic.h"
@@ -58,24 +60,12 @@ static void command_about(const char *args) {
 
 static void command_restart(const char *args) {
     (void)args;
-    console_print(STR_RESTARTING "\n");
-    // Ask the keyboard controller to pulse the CPU's reset line.
-    // (Odd but true: this is the classic way PCs reboot.)
-    outb(0x64, 0xFE);
-    cpu_halt_forever();
+    power_restart();
 }
 
 static void command_off(const char *args) {
     (void)args;
-    console_print(STR_TURNING_OFF "\n");
-    // QEMU's virtual power button. Real hardware needs ACPI (much later).
-    outw(0x604, 0x2000);
-    // Powering off takes a moment. If we're still here after a second,
-    // the machine didn't turn off by itself.
-    timer_sleep_ms(1000);
-    console_set_color(COLOR_WARNING);
-    console_print(STR_OFF_FAILED "\n");
-    cpu_halt_forever();
+    power_off();
 }
 
 static void command_doom(const char *args) {
@@ -251,8 +241,8 @@ static void command_apps(const char *args) {
     }
 }
 
-static void run_file(const struct file *f) {
-    struct run_result result = process_run(f->data, f->size);
+// Show how a program ended (only if there's something worth saying).
+static void report_result(const struct file *f, struct run_result result) {
     switch (result.status) {
     case RUN_FINISHED:
         if (result.exit_code != 0) {
@@ -292,6 +282,54 @@ static void run_file(const struct file *f) {
     }
 }
 
+// Run a program. If it asks for another app to be launched (like the
+// desktop opening Starfield), run that next, and then come back to the
+// first program if it asked to.
+static void run_file(const struct file *f) {
+    const struct file *next = f;
+    const struct file *come_back_to = NULL;
+    while (next != NULL) {
+        const struct file *now = next;
+        next = NULL;
+        console_set_color(COLOR_BLUE);
+        report_result(now, process_run(now->data, now->size));
+
+        char requested[LAUNCH_NAME_MAX];
+        bool come_back;
+        if (process_take_launch(requested, &come_back)) {
+            next = files_find(requested);
+            come_back_to = come_back ? now : NULL;
+        } else if (come_back_to != NULL) {
+            next = come_back_to;
+            come_back_to = NULL;
+        }
+    }
+}
+
+// Start an app by name, if it exists. Returns false if there's no such app.
+static bool run_by_name(const char *name) {
+    const struct file *f = files_find(name);
+    if (f == NULL) {
+        return false;
+    }
+    run_file(f);
+    return true;
+}
+
+static void command_desktop(const char *args) {
+    (void)args;
+    if (!run_by_name("desktop")) {
+        console_set_color(COLOR_WARNING);
+        console_print(STR_NO_DESKTOP "\n");
+    }
+}
+
+static void command_setup(const char *args) {
+    (void)args;
+    settings_set(SETTING_SETUP_DONE, 0);  // the desktop will show setup again
+    command_desktop("");
+}
+
 static void command_run(const char *args) {
     if (args[0] == '\0') {
         console_set_color(COLOR_WARNING);
@@ -324,6 +362,8 @@ static const struct command commands[] = {
     { "crashtest", { 0 },                           STR_CMD_CRASH_SHORT,   STR_CMD_CRASH_LONG,   command_crashtest },
     { "apps",    { "dir", "ls" },                   STR_CMD_APPS_SHORT,    STR_CMD_APPS_LONG,    command_apps },
     { "run",     { "start", "open" },               STR_CMD_RUN_SHORT,     STR_CMD_RUN_LONG,     command_run },
+    { "desktop", { "gui", "startx", "explorer" },   STR_CMD_DESKTOP_SHORT, STR_CMD_DESKTOP_LONG, command_desktop },
+    { "setup",   { "oobe" },                        STR_CMD_SETUP_SHORT,   STR_CMD_SETUP_LONG,   command_setup },
     { "uptime",  { 0 },                             STR_CMD_UPTIME_SHORT,  STR_CMD_UPTIME_LONG,  command_uptime },
     { "wait",    { "sleep", "timeout" },            STR_CMD_WAIT_SHORT,    STR_CMD_WAIT_LONG,    command_wait },
     { "doom",    { 0 },                             STR_CMD_DOOM_SHORT,    STR_CMD_DOOM_LONG,    command_doom },
@@ -468,7 +508,12 @@ static void run_line(char *line) {
     cmd->run(args);
 }
 
-void shell_run(void) {
+void shell_run(const char *autostart) {
+    if (autostart != NULL && files_find(autostart) != NULL) {
+        console_set_color(COLOR_DIM);
+        console_print(STR_AUTOSTART "\n");
+        run_by_name(autostart);
+    }
     char line[LINE_MAX_LENGTH];
     for (;;) {
         console_set_color(COLOR_GREEN);

@@ -13,6 +13,7 @@ static const char *cpu_error_names[32] = STR_CPU_ERROR_NAMES;
 // The friendly part, the same for every crash.
 static void print_header(void) {
     interrupts_disable();  // nothing should interrupt the crash screen
+    console_pause_screen(false);  // even if a program was showing graphics
     console_clear();
     console_set_color(COLOR_GREEN);
     console_print(STR_PANIC_TITLE "\n");

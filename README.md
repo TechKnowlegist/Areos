@@ -31,24 +31,43 @@ The goals:
 - [x] Memory management
 - [x] Timer + interrupts
 - [x] Program loader (`.arx` apps, in ELF or native AREOS format)
-- [ ] Graphics mode
+- [x] Graphics mode (apps draw pictures and read raw key presses)
 - [ ] Doom
 
 Later:
-- [ ] Desktop and mini apps
-- [ ] GUI (windows and a mouse)
-- [ ] Built-in screen reader (sound driver + speech engine, reads the screen and what the mouse is over)
+- [x] Setup screens (welcome, name, language, dark/light, accessibility)
+- [x] Desktop and GUI, first version (app tiles, windows, mouse, clock)
+- [ ] Saving settings to a disk (right now they last until AREOS turns off)
+- [ ] Built-in screen reader (sound driver + speech engine). Focus and mouse hover are already described in text.
 
 ## Apps
 
-AREOS runs `.arx` programs, each walled off in its own memory so a crashing app can't take AREOS down. Type `apps` to list them and type an app's name to run it. Try `hello`, `countdown`, and `oops` (which crashes on purpose).
+AREOS runs `.arx` programs, each walled off in its own memory so a crashing app can't take AREOS down. Type `apps` to list them and type an app's name to run it. Try `hello`, `countdown`, `starfield` (fly through space, arrow keys change speed), and `oops` (which crashes on purpose).
 
 - [Writing an AREOS app](docs/writing-apps.md)
 - [The .arx format](docs/arx-format.md)
 
+## Desktop
+
+AREOS starts with a few setup screens, then opens the desktop: your apps as tiles, plus Settings, About, Terminal and Turn off. Pressing Enter through setup keeps the defaults (dark mode, English, detailed descriptions).
+
+- **Tab** or **arrow keys**: move. **Shift+Tab**: move back.
+- **Space**: choose. **Enter**: choose (and, during setup, go to the next page).
+- **Escape**: go back, or close a window.
+- **F1**: hear the keys. **F2**: hear where you are.
+- **Letters**: jump to the next item starting with that letter.
+- The **mouse** works too: click tiles and buttons, drag windows by their title bar.
+
+To skip the desktop, pick **AREOS (text only)** in the boot menu. At the command line, `desktop` opens it again and `setup` reruns the setup screens.
+
 ## Accessibility
 
-Everything AREOS prints is also sent as plain text to the terminal you ran `make run-bios` from, and you can type commands there too. That means screen readers like NVDA can read AREOS today, before it has a voice of its own.
+Everything AREOS shows is also sent as plain text to the terminal you ran `make run-bios` from, and you can type there too, so screen readers like NVDA can use all of AREOS:
+
+- The command line and every app's text appear in the terminal.
+- On the desktop, every focus change is described, like *"Light mode, radio button, not selected. 2 of 2."*
+- Whatever the mouse points at is described, like *"Mouse: Settings"*.
+- The boot menu also appears in the terminal. Press Down then Enter within 3 seconds to pick text only.
 
 ## Building
 

@@ -8,11 +8,19 @@
 #define AREOS_INPUT_H
 
 #include <stdbool.h>
+#include "keyboard.h"
 
-// If a key is waiting from either source, put it in *out and return true.
+// If a typed character is waiting from either source, put it in *out
+// and return true.
 bool input_try_get_key(char *out);
 
-// Wait for a key. If `blink_cursor` is set, blink the cursor while waiting.
+// Wait for a typed character. If `blink_cursor` is set, blink the
+// cursor while waiting.
 char input_wait_key(bool blink_cursor);
+
+// If a key went down or up, describe it in *out and return true. Keys
+// typed in the terminal arrive as a "down" followed right away by an "up",
+// because terminals only say which key was typed, not how long it was held.
+bool input_try_get_event(struct key_event *out);
 
 #endif

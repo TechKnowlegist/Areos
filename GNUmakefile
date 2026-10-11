@@ -8,7 +8,7 @@
 ARCH := x86_64
 
 # Default user QEMU flags. These are appended to the QEMU command calls.
-QEMUFLAGS := -m 2G -serial stdio
+QEMUFLAGS := -m 2G -serial stdio -rtc base=localtime
 
 # Internal architecture specific variables that should not be changed by the
 # user. x86_64 images get an MBR, the most portable form for BIOS and UEFI.
@@ -153,8 +153,10 @@ $(IMAGE_NAME).iso: limine-binary/limine kernel apps
 	# Put the apps on the disc, and tell Limine to load each one for AREOS.
 	mkdir -p iso_root/apps
 	cp apps/bin/*.arx iso_root/apps/
-	for app in apps/bin/*.arx; do \
-		echo "    module_path: boot():/apps/$$(basename $$app)" >> iso_root/boot/limine/limine.conf; \
+	# Each boot menu entry needs its own list of apps, so add them after
+	# every "path:" line.
+	for app in $$(ls -r apps/bin/*.arx); do \
+		sed -i "/^    path: /a\\    module_path: boot():/apps/$$(basename $$app)" iso_root/boot/limine/limine.conf; \
 	done
 ifeq ($(ARCH),x86_64)
 	cp limine-binary/limine-bios.sys limine-binary/limine-bios-cd.bin iso_root/boot/limine/

@@ -5,7 +5,7 @@
 #   ELF_APPS:    .arx with ELF inside (the standard format)
 #   NATIVE_APPS: .arx in the native AREOS format (packed by tools/arxpack)
 
-ELF_APPS    := hello oops
+ELF_APPS    := hello oops starfield desktop
 NATIVE_APPS := countdown
 
 CC      := cc
@@ -17,11 +17,11 @@ CFLAGS := -O2 -pipe -Wall -Wextra -std=gnu11 -ffreestanding -fno-builtin \
           -fno-stack-protector -fno-stack-check -fno-PIC -fno-pie \
           -mno-red-zone -mno-sse -mno-sse2 -mno-mmx -mno-80387 \
           -fcf-protection=none -fno-stack-clash-protection \
-          -I include
-LDFLAGS := -nostdlib -static -no-pie -Wl,-T,lib/app.ld -Wl,--build-id=none \
+          -ffunction-sections -fdata-sections -I include
+LDFLAGS := -nostdlib -static -no-pie -Wl,-T,lib/app.ld -Wl,--build-id=none -Wl,--gc-sections \
            -Wl,-z,max-page-size=0x1000 -Wl,-z,noexecstack
 
-LIB := bin/start.o bin/memory.o
+LIB := bin/start.o bin/memory.o bin/font.o bin/gui.o
 
 # Keep in-between files (.o, .elf) so rebuilds are quick.
 .SECONDARY:
@@ -30,11 +30,11 @@ ARXPACK := ../tools/bin/arxpack
 .PHONY: all
 all: $(addprefix bin/,$(addsuffix .arx,$(ELF_APPS) $(NATIVE_APPS)))
 
-bin/%.o: lib/%.c include/areos.h
+bin/%.o: lib/%.c include/areos.h include/gui.h include/font.h
 	mkdir -p bin
 	$(CC) $(CFLAGS) -c $< -o $@
 
-bin/%.app.o: %.c include/areos.h
+bin/%.app.o: %.c include/areos.h include/gui.h
 	mkdir -p bin
 	$(CC) $(CFLAGS) -c $< -o $@
 

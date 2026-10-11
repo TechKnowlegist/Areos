@@ -7,6 +7,10 @@
 #include "serial.h"
 
 static struct limine_framebuffer *screen;
+
+// While a program is drawing graphics, the console stays off the screen
+// (it would scribble over the picture) but still talks to the terminal.
+static bool screen_paused = false;
 static uint32_t text_color = COLOR_GREEN;
 
 // Where the next character goes, counted in characters (not pixels).
@@ -115,6 +119,9 @@ void console_init(struct limine_framebuffer *fb) {
 }
 
 void console_clear(void) {
+    if (screen_paused) {
+        return;
+    }
     fill_rect(0, 0, screen->width, screen->height, COLOR_BACKGROUND);
     // Clear the mirrored terminal too (a standard terminal "clear screen" code).
     for (const char *code = "\x1b[2J\x1b[H"; *code != '\0'; code++) {
@@ -160,6 +167,9 @@ static void mirror_to_serial(char c) {
 
 void console_putc(char c) {
     mirror_to_serial(c);
+    if (screen_paused) {
+        return;
+    }
     erase_cursor();
 
     if (c == '\n') {
@@ -188,6 +198,13 @@ void console_putc(char c) {
 }
 
 void console_print(const char *text) {
+    if (screen_paused) {
+        // Off-screen: no lines to wrap, just send the text to the terminal.
+        for (size_t i = 0; text[i] != '\0'; i++) {
+            mirror_to_serial(text[i]);
+        }
+        return;
+    }
     for (size_t i = 0; text[i] != '\0'; i++) {
         char c = text[i];
 
@@ -233,7 +250,7 @@ void console_hide_cursor(void) {
 }
 
 void console_blink_cursor(bool on) {
-    if (!cursor_visible) {
+    if (!cursor_visible || screen_paused) {
         return;  // the cursor has been hidden for good (crash screen)
     }
     if (on) {
@@ -249,4 +266,8 @@ void console_print_hex(uint64_t number) {
     for (int shift = 60; shift >= 0; shift -= 4) {
         console_putc(hex_digits[(number >> shift) & 0xF]);
     }
+}
+
+void console_pause_screen(bool paused) {
+    screen_paused = paused;
 }

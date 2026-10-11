@@ -74,6 +74,12 @@
 #define STR_CMD_RUN_SHORT       "Run an app"
 #define STR_CMD_RUN_LONG        "Runs an app, like 'run hello'. You can also just type the app's name. Apps run walled off from AREOS, so if one crashes, AREOS keeps going."
 
+#define STR_CMD_DESKTOP_SHORT   "Open the desktop"
+#define STR_CMD_DESKTOP_LONG    "Opens the AREOS desktop (the graphical side). Everything on it is also described here in text, for screen readers."
+
+#define STR_CMD_SETUP_SHORT     "Run the setup screens again"
+#define STR_CMD_SETUP_LONG      "Goes through the welcome and setup screens again, then opens the desktop."
+
 // ---- Command output ----
 #define STR_ABOUT_TEXT      "AREOS v0.1 - a hobby operating system built from scratch.\n" \
                             "Not Linux. Not Windows. Not macOS. Its own thing.\n" \
@@ -109,6 +115,10 @@
 #define STR_RUN_CRASHED_2   "AREOS is fine, only the app was stopped."
 #define STR_RUN_WHERE       "  At instruction: "
 #define STR_RUN_ADDRESS     "  Tried to use address: "
+#define STR_GRAPHICS_ON     "(Graphics mode on: the screen is showing a picture. Text keeps coming here.)"
+#define STR_GRAPHICS_OFF    "(Graphics mode off: back to text.)"
+#define STR_NO_DESKTOP      "The desktop app isn't on this disc."
+#define STR_AUTOSTART       "Starting the desktop. (Type desktop at the prompt to come back to it later.)"
 #define STR_CRASH_REASON    "You asked for a crash with the crashtest command. Everything is fine!"
 
 // ---- Crash screen ----

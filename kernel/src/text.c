@@ -34,3 +34,16 @@ const char *text_skip_spaces(const char *text) {
     }
     return text;
 }
+
+bool text_contains(const char *haystack, const char *needle) {
+    for (size_t start = 0; haystack[start] != '\0'; start++) {
+        size_t i = 0;
+        while (needle[i] != '\0' && haystack[start + i] == needle[i]) {
+            i++;
+        }
+        if (needle[i] == '\0') {
+            return true;
+        }
+    }
+    return needle[0] == '\0';
+}

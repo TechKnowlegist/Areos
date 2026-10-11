@@ -15,6 +15,9 @@ size_t text_length(const char *text);
 // True if two strings match, ignoring upper/lower case ("HELP" == "help").
 bool text_equal_ignore_case(const char *a, const char *b);
 
+// True if `needle` appears anywhere in `haystack`.
+bool text_contains(const char *haystack, const char *needle);
+
 // Skip over any spaces at the start of a string.
 const char *text_skip_spaces(const char *text);
 

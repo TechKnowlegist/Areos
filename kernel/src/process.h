@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 enum run_status {
     RUN_FINISHED,      // the program exited normally
@@ -45,5 +46,19 @@ __attribute__((noreturn)) void process_crashed(struct interrupt_frame *frame);
 
 // Give the running program more memory. Returns its address, or 0.
 uint64_t process_more_memory(uint64_t bytes);
+
+// ---- Launching another app ----
+// AREOS runs one program at a time. To open another app, a program (like
+// the desktop) asks for it to be launched next, then exits. The shell
+// runs the requested app, and afterwards can bring the first one back.
+
+#define LAUNCH_NAME_MAX 64
+
+// Ask for `name` to run once the current program ends. If `come_back`
+// is set, the current program is started again after that.
+void process_request_launch(const char *name, bool come_back);
+
+// If a launch was requested, copy the details out (and clear the request).
+bool process_take_launch(char *name, bool *come_back);
 
 #endif

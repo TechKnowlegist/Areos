@@ -11,6 +11,9 @@
 #include "panic.h"
 #include "gdt.h"
 #include "files.h"
+#include "graphics.h"
+#include "mouse.h"
+#include "text.h"
 #include "idt.h"
 #include "pic.h"
 #include "timer.h"
@@ -54,6 +57,13 @@ static volatile struct limine_hhdm_request hhdm_request = {
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_module_request module_request = {
     .id = LIMINE_MODULE_REQUEST_ID,
+    .revision = 0
+};
+
+// ...and for the command line from the boot menu ("text" = no desktop).
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_executable_cmdline_request cmdline_request = {
+    .id = LIMINE_EXECUTABLE_CMDLINE_REQUEST_ID,
     .revision = 0
 };
 
@@ -104,6 +114,7 @@ void kmain(void) {
 
     serial_init();  // first, so the terminal mirror catches everything
     console_init(framebuffer);
+    graphics_init(framebuffer);
 
     console_set_color(COLOR_GREEN);
     console_print(STR_BOOT_TITLE "\n");
@@ -132,6 +143,7 @@ void kmain(void) {
     pic_init();
     timer_init();
     keyboard_init();
+    mouse_init();
     interrupts_enable();
 
     console_set_color(COLOR_DIM);
@@ -148,6 +160,10 @@ void kmain(void) {
     console_set_color(COLOR_DIM);
     console_print(STR_SHELL_HINT "\n\n");
 
+    // Start the desktop, unless the boot menu asked for text only.
+    bool text_only = cmdline_request.response != NULL
+                  && text_contains(cmdline_request.response->cmdline, "text");
+
     // Hand control to the command line. It never comes back.
-    shell_run();
+    shell_run(text_only ? NULL : "desktop");
 }
