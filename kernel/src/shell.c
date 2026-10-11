@@ -16,6 +16,7 @@
 #include "cpu.h"
 #include "heap.h"
 #include "timer.h"
+#include "serial.h"
 #include "pmm.h"
 #include "panic.h"
 #include "lang_en.h"
@@ -67,7 +68,9 @@ static void command_off(const char *args) {
     console_print(STR_TURNING_OFF "\n");
     // QEMU's virtual power button. Real hardware needs ACPI (much later).
     outw(0x604, 0x2000);
-    // If we're still here, the machine didn't power off.
+    // Powering off takes a moment. If we're still here after a second,
+    // the machine didn't turn off by itself.
+    timer_sleep_ms(1000);
     console_set_color(COLOR_WARNING);
     console_print(STR_OFF_FAILED "\n");
     cpu_halt_forever();
@@ -308,12 +311,42 @@ static void command_help(const char *args) {
 
 #define CURSOR_BLINK_MS 500
 
+// Typing can also come from the terminal, through the serial port.
+// Translate what terminals send into what the shell expects.
+static bool serial_try_get_key(char *out) {
+    static int skip = 0;  // bytes left to ignore from an arrow-key code
+    char c;
+    while (serial_try_getc(&c)) {
+        if (skip > 0) {
+            skip--;
+            continue;
+        }
+        if (c == 0x1B) {            // Escape: arrow keys send Esc [ A etc.
+            skip = 2;
+            continue;
+        }
+        if (c == '\r') {
+            *out = KEY_ENTER;
+            return true;
+        }
+        if (c == 0x7F || c == 0x08) {  // Backspace (terminals send either)
+            *out = KEY_BACKSPACE;
+            return true;
+        }
+        if (c >= 32 && c <= 126) {
+            *out = c;
+            return true;
+        }
+    }
+    return false;
+}
+
 // Wait for a key, blinking the cursor while we wait.
 static char wait_for_key(void) {
     bool cursor_on = true;
     uint64_t next_blink = timer_ms() + CURSOR_BLINK_MS;
     char c;
-    while (!keyboard_try_get_char(&c)) {
+    while (!keyboard_try_get_char(&c) && !serial_try_get_key(&c)) {
         if (timer_ms() >= next_blink) {
             cursor_on = !cursor_on;
             console_blink_cursor(cursor_on);

@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include "console.h"
 #include "font.h"
+#include "serial.h"
 
 static struct limine_framebuffer *screen;
 static uint32_t text_color = COLOR_GREEN;
@@ -115,6 +116,10 @@ void console_init(struct limine_framebuffer *fb) {
 
 void console_clear(void) {
     fill_rect(0, 0, screen->width, screen->height, COLOR_BACKGROUND);
+    // Clear the mirrored terminal too (a standard terminal "clear screen" code).
+    for (const char *code = "\x1b[2J\x1b[H"; *code != '\0'; code++) {
+        serial_putc(*code);
+    }
     cursor_col = 0;
     cursor_row = 0;
 }
@@ -123,8 +128,8 @@ void console_set_color(uint32_t color) {
     text_color = color;
 }
 
-// The blinking-line cursor isn't blinking yet (no timer until step 5),
-// so it's just an underscore showing where the next letter will go.
+// The cursor is an underscore showing where the next letter will go.
+// The shell makes it blink while it waits for a key.
 static bool cursor_visible = true;
 
 static void draw_cursor(void) {
@@ -137,7 +142,24 @@ static void erase_cursor(void) {
     draw_char(' ', cursor_col, cursor_row);
 }
 
+// Send text to the serial port too, so it shows up in the terminal
+// (where a screen reader can read it). Terminals want "\r\n" for a new
+// line, and "back, space, back" to erase a letter.
+static void mirror_to_serial(char c) {
+    if (c == '\n') {
+        serial_putc('\r');
+        serial_putc('\n');
+    } else if (c == '\b') {
+        serial_putc('\b');
+        serial_putc(' ');
+        serial_putc('\b');
+    } else if (c != '\t') {  // tabs are sent as the spaces they turn into
+        serial_putc(c);
+    }
+}
+
 void console_putc(char c) {
+    mirror_to_serial(c);
     erase_cursor();
 
     if (c == '\n') {

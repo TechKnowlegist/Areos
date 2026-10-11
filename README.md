@@ -34,6 +34,15 @@ The goals:
 - [ ] Graphics mode
 - [ ] Doom
 
+Later:
+- [ ] Desktop and mini apps
+- [ ] GUI (windows and a mouse)
+- [ ] Built-in screen reader (sound driver + speech engine, reads the screen and what the mouse is over)
+
+## Accessibility
+
+Everything AREOS prints is also sent as plain text to the terminal you ran `make run-bios` from, and you can type commands there too. That means screen readers like NVDA can read AREOS today, before it has a voice of its own.
+
 ## Building
 
 You need a Linux environment (WSL works) with: `build-essential nasm xorriso curl git make qemu-system-x86 qemu-system-gui`
@@ -41,6 +50,8 @@ You need a Linux environment (WSL works) with: `build-essential nasm xorriso cur
 Then run:
 
     make run-bios
+
+AREOS opens in a QEMU window and also talks through the terminal. To quit, type `off` (or press Ctrl+C in the terminal).
 
 ## Credits
 

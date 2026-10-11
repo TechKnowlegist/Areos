@@ -13,6 +13,7 @@
 #include "pic.h"
 #include "timer.h"
 #include "keyboard.h"
+#include "serial.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -92,6 +93,7 @@ void kmain(void) {
         hcf();
     }
 
+    serial_init();  // first, so the terminal mirror catches everything
     console_init(framebuffer);
 
     console_set_color(COLOR_GREEN);
