@@ -4,6 +4,7 @@
 #define AREOS_CPU_H
 
 // Stop the processor for good. Nothing runs after this.
+__attribute__((noreturn))
 static inline void cpu_halt_forever(void) {
     for (;;) {
         asm volatile ("cli; hlt");

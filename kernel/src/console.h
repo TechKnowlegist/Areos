@@ -38,4 +38,10 @@ void console_putc(char c);
 // Print a whole string.
 void console_print(const char *text);
 
+// Stop showing the _ cursor (used by the crash screen).
+void console_hide_cursor(void);
+
+// Print a whole number, like 2048.
+void console_print_number(uint64_t number);
+
 #endif

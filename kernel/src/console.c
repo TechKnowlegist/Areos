@@ -125,8 +125,12 @@ void console_set_color(uint32_t color) {
 
 // The blinking-line cursor isn't blinking yet (no timer until step 5),
 // so it's just an underscore showing where the next letter will go.
+static bool cursor_visible = true;
+
 static void draw_cursor(void) {
-    draw_char('_', cursor_col, cursor_row);
+    if (cursor_visible) {
+        draw_char('_', cursor_col, cursor_row);
+    }
 }
 
 static void erase_cursor(void) {
@@ -186,4 +190,22 @@ void console_print(const char *text) {
 
         console_putc(c);
     }
+}
+
+void console_print_number(uint64_t number) {
+    // Build the digits backwards (ones first), then print them in order.
+    char digits[21];  // enough for the biggest 64-bit number
+    int count = 0;
+    do {
+        digits[count++] = (char)('0' + number % 10);
+        number /= 10;
+    } while (number > 0);
+    while (count > 0) {
+        console_putc(digits[--count]);
+    }
+}
+
+void console_hide_cursor(void) {
+    erase_cursor();
+    cursor_visible = false;
 }

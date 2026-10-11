@@ -28,7 +28,7 @@ The goals:
 - [x] Print text
 - [x] Keyboard input
 - [x] Shell
-- [ ] Memory management
+- [x] Memory management
 - [ ] Timer + interrupts
 - [ ] Program loader
 - [ ] Graphics mode

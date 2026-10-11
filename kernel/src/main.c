@@ -5,6 +5,9 @@
 #include "console.h"
 #include "lang_en.h"
 #include "shell.h"
+#include "pmm.h"
+#include "heap.h"
+#include "panic.h"
 
 // Set the base revision to 6, this is recommended as this is the latest
 // base revision described by the Limine boot protocol specification.
@@ -21,6 +24,21 @@ static volatile uint64_t limine_base_revision[] = LIMINE_BASE_REVISION(6);
 __attribute__((used, section(".limine_requests")))
 static volatile struct limine_framebuffer_request framebuffer_request = {
     .id = LIMINE_FRAMEBUFFER_REQUEST_ID,
+    .revision = 0
+};
+
+// Ask Limine for the memory map (which parts of RAM we can use)...
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_memmap_request memmap_request = {
+    .id = LIMINE_MEMMAP_REQUEST_ID,
+    .revision = 0
+};
+
+// ...and for the "higher half direct map": all of physical memory,
+// mapped at one fixed offset so the kernel can reach any of it.
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_hhdm_request hhdm_request = {
+    .id = LIMINE_HHDM_REQUEST_ID,
     .revision = 0
 };
 
@@ -81,6 +99,19 @@ void kmain(void) {
     console_print(STR_DEV_WARNING_2 "\n");
     console_set_color(COLOR_DIM);
     console_print(STR_REAL_MACHINE "\n\n");
+
+    // Set up memory. The console already works, so if this fails the
+    // crash screen can show why.
+    if (memmap_request.response == NULL || hhdm_request.response == NULL) {
+        PANIC("The bootloader didn't tell us about memory");
+    }
+    pmm_init(memmap_request.response, hhdm_request.response->offset);
+    heap_init();
+
+    console_set_color(COLOR_DIM);
+    console_print(STR_BOOT_MEMORY_1);
+    console_print_number(pmm_total_bytes() / (1024 * 1024));
+    console_print(STR_BOOT_MEMORY_2 "\n\n");
 
     console_set_color(COLOR_GREEN);
     console_print(STR_SHELL_BANNER "\n");
