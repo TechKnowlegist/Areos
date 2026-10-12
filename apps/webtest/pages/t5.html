@@ -1,0 +1,50 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--brand:#0b6cff;--bg:#0f172a;--fg:#e2e8f0;--muted:#94a3b8;--radius:14px;--gap:20px}
+*{box-sizing:border-box}
+body{margin:0;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--fg)}
+a{color:var(--brand);text-decoration:none}
+.top{position:sticky;top:0;display:flex;align-items:center;justify-content:space-between;padding:14px 5vw;background:rgba(15,23,42,.9);border-bottom:1px solid #1e293b}
+.logo{font-weight:800;font-size:20px;letter-spacing:-.5px}
+.logo::before{content:"";display:inline-block;width:12px;height:12px;margin-right:8px;border-radius:50%;background:linear-gradient(135deg,#0b6cff,#7c3aed)}
+.menu{display:flex;gap:22px;list-style:none;margin:0;padding:0}
+.menu a{color:var(--muted)}
+.menu a:hover{color:#fff}
+.hero{position:relative;overflow:hidden;padding:80px 5vw 60px;text-align:center;background:radial-gradient(circle at 50% 0%,#1d4ed8 0,transparent 60%)}
+.hero h1{font-size:clamp(32px,5vw,56px);line-height:1.1;margin:0 0 16px}
+.hero p{max-width:560px;margin:0 auto 28px;color:var(--muted)}
+.cta{display:inline-flex;gap:12px}
+.btn{padding:12px 22px;border-radius:999px;font-weight:600;border:1px solid transparent}
+.btn.primary{background:var(--brand);color:#fff}
+.btn.ghost{border-color:#334155;color:var(--fg)}
+.badge{position:absolute;top:16px;right:5vw;background:#7c3aed;color:#fff;font-size:12px;padding:4px 10px;border-radius:6px;transform:rotate(3deg)}
+.features{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:var(--gap);padding:40px 5vw}
+.feat{background:#111c33;border:1px solid #1e293b;border-radius:var(--radius);padding:22px}
+.feat .ico{width:44px;height:44px;border-radius:12px;background:#1e3a8a;margin-bottom:12px;display:grid;place-items:center;font-size:22px}
+.feat h3{margin:0 0 6px}
+.feat p{margin:0;color:var(--muted);font-size:15px}
+.layout{display:grid;grid-template-columns:240px 1fr;grid-template-areas:"side main" "foot foot";gap:var(--gap);padding:0 5vw 40px}
+.side{grid-area:side;background:#111c33;border-radius:var(--radius);padding:18px}
+.main{grid-area:main}
+.foot{grid-area:foot;text-align:center;color:var(--muted);border-top:1px solid #1e293b;padding-top:18px}
+.tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.tag{background:#1e293b;border-radius:6px;padding:2px 10px;font-size:13px}
+.price{display:flex;align-items:baseline;gap:6px}
+.price b{font-size:40px}
+.card{width:calc(50% - 10px);float:left;margin-right:20px;background:#111c33;border-radius:var(--radius);padding:16px}
+.card:nth-child(2n){margin-right:0}
+.clear{clear:both}
+@media (max-width:700px){.menu{display:none}.layout{grid-template-columns:1fr;grid-template-areas:"main" "side" "foot"}}
+</style></head><body>
+<div class="top"><div class="logo">Nimbus</div><ul class="menu"><li><a href="#">Product</a></li><li><a href="#">Pricing</a></li><li><a href="#">Docs</a></li><li><a href="#">Blog</a></li></ul><a class="btn primary" href="#">Sign in</a></div>
+<section class="hero"><span class="badge">New</span><h1>Ship faster with less overhead</h1><p>A tiny platform that handles deploys, previews and rollbacks so your team can focus on the product.</p><div class="cta"><a class="btn primary" href="#">Get started</a><a class="btn ghost" href="#">Live demo</a></div></section>
+<section class="features">
+<div class="feat"><div class="ico">⚡</div><h3>Instant deploys</h3><p>Push to main and see it live in seconds.</p></div>
+<div class="feat"><div class="ico">🔒</div><h3>Secure by default</h3><p>Every preview is private and isolated.</p></div>
+<div class="feat"><div class="ico">📈</div><h3>Usage insights</h3><p>Know what your users do without trackers.</p></div>
+<div class="feat"><div class="ico">🛠</div><h3>Extensible</h3><p>Hooks and plugins for every stage.</p></div>
+</section>
+<div class="layout"><aside class="side"><h3 style="margin-top:0">Plans</h3><div class="price"><b>$12</b><span>/mo</span></div><div class="tags"><span class="tag">teams</span><span class="tag">api</span><span class="tag">sso</span></div></aside>
+<main class="main"><div class="card"><h3 style="margin-top:0">Alpha</h3><p>Floated card one.</p></div><div class="card"><h3 style="margin-top:0">Beta</h3><p>Floated card two.</p></div><div class="clear"></div></main>
+<div class="foot">© 2026 Nimbus. All rights reserved.</div></div>
+</body></html>

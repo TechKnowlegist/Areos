@@ -1,0 +1,41 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Test 1</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 0; background: #f4f6f8; color: #222; }
+header { background: linear-gradient(90deg, #1e3c72, #2a5298); color: white; padding: 24px 32px; }
+header h1 { margin: 0; font-size: 28px; }
+nav { display: flex; gap: 16px; padding: 12px 32px; background: #fff; box-shadow: 0 2px 6px rgba(0,0,0,.15); }
+nav a { color: #1e3c72; text-decoration: none; font-weight: bold; }
+main { max-width: 900px; margin: 24px auto; padding: 0 16px; }
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.card { background: white; border: 1px solid #dde; border-radius: 10px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.1); }
+.card h2 { margin-top: 0; font-size: 18px; color: #2a5298; }
+.btn { display: inline-block; background: #2a5298; color: #fff; padding: 8px 16px; border-radius: 20px; }
+table { border-collapse: collapse; width: 100%; margin-top: 24px; background: white; }
+th, td { border: 1px solid #ccd; padding: 8px 12px; text-align: left; }
+th { background: #e8ecf5; }
+.float { float: right; width: 120px; height: 80px; background: #f90; margin: 0 0 8px 16px; border-radius: 8px; }
+footer { text-align: center; padding: 24px; color: #667; font-size: 13px; }
+code { background: #eef; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+</style></head>
+<body>
+<header><h1>AREOS Test Page</h1><p>Real layout, colors and shapes.</p></header>
+<nav><a href="#">Home</a><a href="#">Docs</a><a href="#">Download</a><a href="#">About</a></nav>
+<main>
+<div class="cards">
+ <div class="card"><h2>Fast</h2><p>Runs in a tiny virtual machine. <span class="btn">Try it</span></p></div>
+ <div class="card"><h2>Private</h2><p>No tracking, no telemetry, nothing phones home.</p></div>
+ <div class="card"><h2>Accessible</h2><p>Speaks every control with <code>Flite</code> screen reader support.</p></div>
+</div>
+<div style="margin-top:24px"><div class="float"></div>
+<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.</p>
+<p>Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.</p></div>
+<table><tr><th>Name</th><th>Size</th><th>Status</th></tr>
+<tr><td>kernel</td><td>312 KB</td><td>ok</td></tr>
+<tr><td>browser</td><td>1.2 MB</td><td>ok</td></tr></table>
+<ul><li>First item</li><li>Second item</li><li>Third item</li></ul>
+<ol><li>One</li><li>Two</li></ol>
+<form><input type="text" value="hello"> <input type="checkbox" checked> <input type="radio"> <select><option>A</option><option selected>Beta</option></select> <button>Go</button></form>
+</main>
+<footer>It can run Doom. That's it.</footer>
+</body></html>

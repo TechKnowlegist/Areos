@@ -40,14 +40,15 @@ bool page_document_init(struct page_document *d) {
 
 // ---- Web addresses ----
 
-bool url_split(const char *url, char *host, int host_max, int *port, char *path, int path_max) {
-    if (!text_starts_with(url, "http://")) return false;
-    const char *p = url + 7;
+bool url_split(const char *url, char *host, int host_max, int *port, char *path, int path_max, bool *secure) {
+    *secure = text_starts_with(url, "https://");
+    if (!*secure && !text_starts_with(url, "http://")) return false;
+    const char *p = url + (*secure ? 8 : 7);
     int n = 0;
     while (*p && *p != '/' && *p != ':' && *p != '?' && *p != '#' && n < host_max - 1) host[n++] = to_lower(*p++);
     host[n] = '\0';
     if (n == 0) return false;
-    *port = 80;
+    *port = *secure ? 443 : 80;
     if (*p == ':') {
         p++;
         int value = 0;
@@ -70,7 +71,7 @@ void url_resolve(const char *base, const char *link, char *out, int max) {
         return;
     }
     if (link[0] == '/' && link[1] == '/') {             // "//host/path": same scheme
-        text_copy(out, "http:", max);
+        text_copy(out, text_starts_with(base, "https://") ? "https:" : "http:", max);
         text_append(out, link, max);
         return;
     }
@@ -359,6 +360,8 @@ static void add_text(const char *text, int length) {
     }
 }
 
+static int current_aid = 0;   // data-aid of the tag being read: how scripts name controls
+
 static int new_focusable(enum focus_kind kind) {
     if (doc->focusable_count >= MAX_FOCUSABLES) return -1;
     int f = doc->focusable_count++;
@@ -369,6 +372,8 @@ static int new_focusable(enum focus_kind kind) {
     p->label = -1;
     p->form = current_form;
     p->line = -1;
+    p->aid = current_aid;
+    p->secret = false;
     p->value[0] = '\0';
     return f;
 }
@@ -441,10 +446,11 @@ static int decode_char(const char *s, int length, char *out) {
     return extra + 1;
 }
 
-// Tags whose insides aren't shown.
+// Tags whose insides aren't shown. (<noscript> is shown: AREOS has no JavaScript,
+// which is exactly when a page wants it read.)
 static bool is_hidden_tag(const char *name) {
     return text_equal(name, "script") || text_equal(name, "style") || text_equal(name, "head")
-        || text_equal(name, "noscript") || text_equal(name, "svg") || text_equal(name, "template")
+        || text_equal(name, "svg") || text_equal(name, "template")
         || text_equal(name, "iframe") || text_equal(name, "object") || text_equal(name, "select")
         || text_equal(name, "textarea") || text_equal(name, "canvas") || text_equal(name, "video")
         || text_equal(name, "audio");
@@ -462,6 +468,11 @@ static bool is_block_tag(const char *n) {
 
 static void handle_tag(const struct tag *t) {
     const char *n = t->name;
+    current_aid = 0;
+    if (!t->closing) {
+        const char *aid_text = attr(t, "data-aid");
+        for (int i = 0; aid_text && aid_text[i] >= '0' && aid_text[i] <= '9'; i++) current_aid = current_aid * 10 + (aid_text[i] - '0');
+    }
     if (n[0] == 'h' && n[1] >= '1' && n[1] <= '6' && n[2] == '\0') {
         paragraph_break();
         if (!t->closing) {
@@ -595,9 +606,11 @@ static void handle_tag(const struct tag *t) {
             return;
         }
         if (text_equal(type, "text") || text_equal(type, "search") || text_equal(type, "email")
-            || text_equal(type, "url") || text_equal(type, "number") || text_equal(type, "tel")) {
+            || text_equal(type, "url") || text_equal(type, "number") || text_equal(type, "tel")
+            || text_equal(type, "password")) {
             int f = new_focusable(FOCUS_FIELD);
             if (f < 0) return;
+            doc->focusables[f].secret = text_equal(type, "password");
             doc->field_count++;
             const char *label = attr(t, "placeholder");
             if (label == NULL) label = attr(t, "aria-label");
@@ -622,14 +635,16 @@ static void handle_tag(const struct tag *t) {
             }
             focus_label_length = 0;
             pending_space = true;
+            if (current_focusable >= 0) place_word("[", 1, STYLE_BUTTON, current_focusable);
         } else if (t->closing && current_focusable >= 0 && doc->focusables[current_focusable].kind == FOCUS_BUTTON) {
             struct page_focusable *f = &doc->focusables[current_focusable];
             if (focus_label_length == 0) {
-                place_word("[button]", 8, STYLE_BUTTON, current_focusable);
+                place_word("button", 6, STYLE_BUTTON, current_focusable);
                 f->label = store("button", 6);
             } else {
                 f->label = store(focus_label, focus_label_length);
             }
+            place_word("]", 1, STYLE_BUTTON, current_focusable);
             current_focusable = -1;
             pending_space = true;
         }

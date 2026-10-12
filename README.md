@@ -115,21 +115,29 @@ The built-in console font is a bitmap rendering of [DejaVu Sans Mono](https://de
 - The Settings app has categories. Accessibility has the screen reader switch, a voice slider with ten voices (Sally, Rob, Alan and Kal, plus higher and deeper versions of each), a speech speed slider and mouse pointer size.
 - Settings live in memory for now; saving to disk comes later.
 
+## Third-party code
+
+- Flite (speech): see `speech/flite/README.md`.
+- BearSSL (https): MIT licence, `apps/bearssl/LICENSE.txt`.
+- stb_truetype (page fonts): public domain, `apps/desktop/stb_truetype.h`.
+- Liberation fonts (page text): SIL Open Font License 1.1. DejaVu Sans (symbols): Bitstream Vera / DejaVu licence. Both in `apps/desktop/fonts/`.
+
 ## Window management
 
 - Maximize, restore and snap to the left or right half of the screen (Settings, Notes and Browser can resize; Calculator and About stay their size).
 - Keyboard: **Alt+Shift+Left / Right** snap, **Alt+Shift+Up** maximizes, **Alt+Shift+Down** restores (or minimizes). From the terminal mirror: **Alt+L**, **Alt+R**, **Alt+M**.
 - Mouse: the Maximize button in the title bar, double-click the title bar, or drag a window to the left edge, right edge or top of the screen. Dragging a snapped window pulls it back to its normal size.
 
-## Browser (version 2)
+## Browser (version 4: real page layout)
 
-Open **Browser** from the launcher. It uses AREOS's own network stack (DHCP, DNS, TCP) and reads plain **http** pages: words, headings, links and simple forms.
+Open **Browser** from the launcher. It uses AREOS's own network stack (DHCP, DNS, TCP) and reads **http** and **https** pages (secure connections use BearSSL; see docs/https.md): words, headings, links, buttons and text boxes. **It runs JavaScript** (see docs/javascript.md), so single-page sites built with React, Vue and similar work. **Pages are drawn the way their authors designed them**: CSS layout (flexbox, grid, tables, floats), colours, fonts, background pictures, gradients, rounded corners, shadows, JPEG/PNG/GIF/BMP/WebP images and SVG graphics. **Alt+T** switches between the styled page and a plain text view. The screen reader still reads line by line, and Tab, Enter and H work on the styled page. Not yet: web fonts, video, canvas, mouse wheel scrolling, cookies and POST forms.
 
 - Alt+D: address bar (type an address or words to search with FrogFind). Backspace or Alt+Left: back. Alt+Right: forward. F5: reload. The Reload button becomes Stop while loading.
 - On a page: Down/Up read line by line, Tab/Shift+Tab move between links, text boxes and buttons, Enter follows, H jumps to headings, K to links, Space/Page Down scroll.
 - **R** reads the page aloud from here (any key stops). **/** finds words, **N** finds the next match. **B** bookmarks the page, **Alt+B** shows bookmarks, **Alt+H** shows history.
 - The page re-flows when the window is maximized or snapped.
-- Not yet: https, pictures, styles, JavaScript.
+- **Alt+J** shows what the page's scripts wrote to their console, including errors.
+- Not yet: pictures, styles (so menus and pop-ups the page hides with CSS may show), cookies, sending forms with POST, TLS 1.3.
 - In QEMU, `make run-bios` adds the network card (`-nic user,model=e1000`) and hides the Windows pointer over the AREOS screen (turn off with `HIDE_HOST_POINTER=no`).
 
 ## License

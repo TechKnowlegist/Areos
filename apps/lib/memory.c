@@ -77,3 +77,10 @@ int memcmp(const void *a, const void *b, size_t count) {
     }
     return 0;
 }
+
+// The length of a text (BearSSL, the browser's https code, asks for this).
+size_t strlen(const char *text) {
+    size_t length = 0;
+    while (text[length] != '\0') length++;
+    return length;
+}

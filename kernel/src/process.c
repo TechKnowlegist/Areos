@@ -10,7 +10,7 @@
 
 // Where things go in a program's memory (its own private half).
 #define USER_STACK_TOP     0x0000700000000000ULL
-#define USER_STACK_PAGES   64                     // 256 KB of stack
+#define USER_STACK_PAGES   512                    // 2 MB of stack (the JavaScript engine recurses deeply)
 #define USER_HEAP_START    0x0000600000000000ULL  // where "more memory" begins
 #define USER_HEAP_MAX      (1024ULL * 1024 * 1024) // 1 GB cap per program
 #define PROGRAM_MAX_SIZE   (512ULL * 1024 * 1024)  // biggest program image
