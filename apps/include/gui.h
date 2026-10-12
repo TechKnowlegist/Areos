@@ -107,6 +107,7 @@ enum gui_role {
     GUI_ROLE_LINK,        // a link on a web page
     GUI_ROLE_HEADING,     // a heading on a web page
     GUI_ROLE_DOCUMENT,    // a whole web page
+    GUI_ROLE_LIST,        // a list you move through with Up and Down (state says what is chosen)
 };
 
 struct gui_item {

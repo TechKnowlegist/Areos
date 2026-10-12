@@ -339,6 +339,7 @@ static const char *role_name(enum gui_role role) {
     case GUI_ROLE_LINK:       return "link";
     case GUI_ROLE_HEADING:    return "heading";
     case GUI_ROLE_DOCUMENT:   return "web page";
+    case GUI_ROLE_LIST:       return "list";
     }
     return "item";
 }

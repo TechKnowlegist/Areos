@@ -32,6 +32,7 @@ const struct window_app *window_app_for(enum window_kind kind) {
     case WIN_CALCULATOR: return &app_calculator;
     case WIN_NOTES:      return &app_notes;
     case WIN_BROWSER:    return &app_browser;
+    case WIN_FILES:      return &app_files;
     default:             return &app_about;
     }
 }

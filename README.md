@@ -122,6 +122,17 @@ The built-in console font is a bitmap rendering of [DejaVu Sans Mono](https://de
 - stb_truetype (page fonts): public domain, `apps/desktop/stb_truetype.h`.
 - Liberation fonts (page text): SIL Open Font License 1.1. DejaVu Sans (symbols): Bitstream Vera / DejaVu licence. Both in `apps/desktop/fonts/`.
 
+## Files and Notes (in-memory file system)
+
+**Files** (launcher or desktop icon) is a file manager. You can make folders and documents, rename and delete them, and open documents in Notes. Everything lives in memory for now: it stays while AREOS is on and is gone after a restart (saving to disk comes later).
+
+- Up / Down choose, Home / End jump, **Enter** opens, **Backspace** or Left goes up a folder, Right opens a folder.
+- Type a letter to jump to the next name that starts with it.
+- **F4** renames (F2 is "where am I" everywhere), **Delete** deletes (press it twice; a folder goes with everything in it). Tab reaches the buttons: Go up, Open, New folder, New document, Rename, Delete.
+- When you make or rename something, a name box appears with a suggested name. The first key you type replaces it. Enter confirms, Escape cancels.
+
+**Notes** can now save. **Ctrl+S** (or the Save button) saves the note; the first time it asks for a file name (".txt" is added if you leave it off) and puts it in Documents, or the folder Files is showing. **Save as** makes a copy under a new name, **New** starts a fresh note (press twice if you have unsaved changes). Open a document from Files and it loads into Notes.
+
 ## Window management
 
 - Maximize, restore and snap to the left or right half of the screen (Settings, Notes and Browser can resize; Calculator and About stay their size).

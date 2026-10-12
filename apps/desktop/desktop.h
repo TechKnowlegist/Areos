@@ -34,6 +34,7 @@ extern int mouse_size;                    // 0 normal, 1 large, 2 extra large
 extern bool clock_24h;
 extern bool shift_held;                   // Shift is held down right now
 extern bool alt_held;                     // Alt is held down right now
+extern bool ctrl_held;                    // Ctrl is held down right now
 // Where the mouse clicked inside a window item, in window content
 // coordinates (-1 if it wasn't a click). Window apps read this in choose().
 extern int click_x, click_y;
@@ -45,7 +46,7 @@ void request_redraw(void);
 enum icon_kind {
     ICON_PROGRAM, ICON_SETTINGS, ICON_ABOUT, ICON_TERMINAL, ICON_CALCULATOR, ICON_NOTES,
     ICON_STARFIELD, ICON_HELLO, ICON_COUNTDOWN, ICON_OOPS, ICON_POWER, ICON_RESTART, ICON_LOGO,
-    ICON_BROWSER, ICON_QUICK,
+    ICON_BROWSER, ICON_QUICK, ICON_FILES,
 };
 
 void icon_draw(struct gui_canvas *c, enum icon_kind kind, int x, int y, int size);
@@ -112,7 +113,7 @@ void announce_item(struct gui_item *items, int count, int focus);
 
 // ---- Windows ----
 
-enum window_kind { WIN_SETTINGS, WIN_ABOUT, WIN_CALCULATOR, WIN_NOTES, WIN_BROWSER, WIN_COUNT };
+enum window_kind { WIN_SETTINGS, WIN_ABOUT, WIN_CALCULATOR, WIN_NOTES, WIN_BROWSER, WIN_FILES, WIN_COUNT };
 
 #define TITLE_BAR_H 40
 #define TITLE_ITEMS 3          // Minimize, Maximize and Close come last in a window's items
@@ -178,7 +179,7 @@ struct window_app {
     void (*tick)(void);                    // called every frame while open (optional)
 };
 
-extern const struct window_app app_settings, app_about, app_calculator, app_notes, app_browser;
+extern const struct window_app app_settings, app_about, app_calculator, app_notes, app_browser, app_files;
 const struct window_app *window_app_for(enum window_kind kind);
 
 // Where in a slider the mouse clicked, 0 (left end) to 1000 (right end),
@@ -190,7 +191,10 @@ extern int slider_step;
 
 // Handy for apps: open a window and move keyboard focus into it.
 void open_window(enum window_kind kind);
-void settings_show_page(int page);   // Settings window, on one of its pages
+void settings_show_page(int page);
+void notes_open_file(int id);         // load a file from the in-memory file system into Notes and show it
+void notes_file_deleted(int id);      // Files is about to delete this (so Notes lets go of it)
+int files_current_dir(void);          // the folder Files is showing   // Settings window, on one of its pages
 
 // Shared drawing for buttons and radio buttons inside windows.
 void draw_window_item(struct gui_canvas *c, const struct gui_item *item, bool focused, bool hovered);

@@ -11,6 +11,7 @@
 // The mouse works too: anything it points at is described in text.
 
 #include "desktop.h"
+#include "ramfs.h"
 
 // ---- Shared state ----
 
@@ -36,6 +37,7 @@ int launchable_count = 0;
 
 static bool running = true;
 bool shift_held = false;
+bool ctrl_held = false;
 bool alt_held = false;
 int click_x = -1, click_y = -1;
 static int desktop_focus = 0;
@@ -230,6 +232,7 @@ static void add_launchable(const char *label, enum icon_kind icon, enum launch_t
 static void load_launchables(void) {
     add_launchable("Calculator", ICON_CALCULATOR, LAUNCH_WINDOW, WIN_CALCULATOR, "", true);
     add_launchable("Notes", ICON_NOTES, LAUNCH_WINDOW, WIN_NOTES, "", true);
+    add_launchable("Files", ICON_FILES, LAUNCH_WINDOW, WIN_FILES, "", true);
     add_launchable("Browser", ICON_BROWSER, LAUNCH_WINDOW, WIN_BROWSER, "", true);
     // Every .arx app on the disc (except this desktop).
     char file[40];
@@ -627,6 +630,10 @@ static void handle_key(struct areos_key_event *e) {
     }
     if (e->key == AREOS_KEY_ALT) {
         alt_held = e->pressed;
+        return;
+    }
+    if (e->key == AREOS_KEY_CTRL) {
+        ctrl_held = e->pressed;
         return;
     }
     if (!e->pressed) return;
@@ -1093,6 +1100,7 @@ int main(void) {
     load_launchables();
     wallpaper_init(screen.width, screen.height);
     wallpaper_build((enum wallpaper_kind)wallpaper_choice, light_mode);
+    ramfs_init();
     windows_init();
     shell_init();
 

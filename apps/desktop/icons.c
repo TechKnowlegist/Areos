@@ -114,6 +114,13 @@ void icon_draw(struct gui_canvas *c, enum icon_kind kind, int x, int y, int s) {
         }
         break;
 
+    case ICON_FILES:
+        tile(c, x, y, s, 0x2F6FB5);
+        gui_rounded(c, x + s / 6, y + s * 26 / 100, s * 30 / 100, s / 8, s / 30, 0xD9A92B);
+        gui_rounded(c, x + s / 6, y + s * 34 / 100, s * 2 / 3, s * 44 / 100, s / 16, 0xF2C94C);
+        gui_fill(c, x + s / 6 + s / 20, y + s * 34 / 100 + s / 12, s * 2 / 3 - s / 10, line, 0xFFE9A0);
+        break;
+
     case ICON_NOTES:
         tile(c, x, y, s, 0xF2C94C);
         gui_rounded(c, x + s / 5, y + s / 6, s * 3 / 5, s * 2 / 3, s / 16, 0xFFFBEA);
@@ -203,6 +210,7 @@ void icon_draw(struct gui_canvas *c, enum icon_kind kind, int x, int y, int s) {
 enum icon_kind icon_for_app(const char *label) {
     if (text_equal(label, "Starfield")) return ICON_STARFIELD;
     if (text_equal(label, "Browser")) return ICON_BROWSER;
+    if (text_equal(label, "Files")) return ICON_FILES;
     if (text_equal(label, "Hello")) return ICON_HELLO;
     if (text_equal(label, "Countdown")) return ICON_COUNTDOWN;
     if (text_equal(label, "Oops")) return ICON_OOPS;
