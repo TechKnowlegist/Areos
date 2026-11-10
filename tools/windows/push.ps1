@@ -33,7 +33,7 @@ if (-not $NoUnpack) {
     }
 }
 
-git add -A
+git add -A 2>$null   # hides the harmless line-ending warnings
 git diff --cached --quiet
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Nothing has changed, so there is nothing to push."

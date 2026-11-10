@@ -34,7 +34,17 @@ if (-not $Iso) {
     } else {
         Write-Host "Downloading..."
         $tmp = "$Iso.part"
-        Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+        try {
+            $ProgressPreference = "SilentlyContinue"
+            Invoke-WebRequest -Uri $url -OutFile $tmp -UseBasicParsing
+        } catch {
+            Remove-Item $tmp -ErrorAction SilentlyContinue
+            Write-Host ""
+            Write-Host "There's no build to download yet."
+            Write-Host "Either GitHub is still building it (give it a couple more minutes),"
+            Write-Host "or the build failed. Check: https://github.com/$Repo/actions"
+            exit 1
+        }
         Move-Item -Force $tmp $Iso
         if ($remote) { Set-Content -Path $stampFile -Value $remote }
         Write-Host "Downloaded: $Iso"

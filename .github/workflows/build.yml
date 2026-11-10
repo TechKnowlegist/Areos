@@ -4,7 +4,7 @@ name: Build AREOS
 
 on:
   push:
-    branches: [main, master]
+    branches: ['**']
   workflow_dispatch:
 
 permissions:
