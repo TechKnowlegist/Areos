@@ -62,7 +62,9 @@ if (-not $WindowsQemu -and (Get-Command wsl.exe -ErrorAction SilentlyContinue)) 
     $ErrorActionPreference = "Continue"
     wsl.exe -e sh -c "command -v qemu-system-x86_64" *> $null
     if ($LASTEXITCODE -eq 0) {
-        $linuxIso = ("$(wsl.exe wslpath -a $Iso)").Trim()
+        # C:\Users\me\file.iso  ->  /mnt/c/Users/me/file.iso
+        $full = (Resolve-Path $Iso).Path
+        $linuxIso = "/mnt/" + $full.Substring(0, 1).ToLower() + $full.Substring(2).Replace("\", "/")
         $helpText = (wsl.exe -e qemu-system-x86_64 -audiodev help 2>&1 | Out-String)
         $wslArgs = @("-M", "q35", "-m", "2G", "-cdrom", $linuxIso, "-boot", "d",
                      "-rtc", "base=localtime", "-nic", "user,model=e1000", "-accel", "tcg")
