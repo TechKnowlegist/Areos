@@ -1,12 +1,12 @@
 // setup.c - the setup screens you see the first time: welcome, your name,
-// language, look, how much to describe, and "all set".
+// language, look, how much to describe, install (test mode for now), and "all set".
 
 #include "desktop.h"
 
-enum page { WELCOME, NAME, LANGUAGE, APPEARANCE, ACCESSIBILITY, DONE, PAGE_COUNT };
+enum page { WELCOME, NAME, LANGUAGE, APPEARANCE, ACCESSIBILITY, INSTALL, DONE, PAGE_COUNT };
 
 enum { ACT_NEXT = 1, ACT_BACK, ACT_NAME, ACT_ENGLISH, ACT_SPANISH, ACT_DARK, ACT_LIGHT,
-       ACT_DETAILED, ACT_BRIEF, ACT_FINISH };
+       ACT_DETAILED, ACT_BRIEF, ACT_FINISH, ACT_TEST, ACT_INSTALL };
 
 static bool active = false;
 static enum page page = WELCOME;
@@ -69,6 +69,12 @@ static void build(void) {
         add_choice("Brief: just names", ACT_BRIEF, !detailed, 1);
         add_back_next("Next", ACT_NEXT, true);
         break;
+    case INSTALL:
+        add_choice("I'm not installing, just testing", ACT_TEST, true, 0);
+        add_choice("Install to this computer (coming soon)", ACT_INSTALL, false, 1);
+        items[count - 1].disabled = true;
+        add_back_next("Next", ACT_NEXT, true);
+        break;
     case DONE:
     default:
         add_back_next("Start using AREOS", ACT_FINISH, true);
@@ -85,6 +91,7 @@ static const char *title(void) {
     case LANGUAGE:      return "Choose your language";
     case APPEARANCE:    return "Pick a look";
     case ACCESSIBILITY: return "How much should AREOS describe?";
+    case INSTALL:       return "Time to install to your system?";
     default:            return "You're all set";
     }
 }
@@ -104,6 +111,9 @@ static const char *body(void) {
     case ACCESSIBILITY:
         return "AREOS reads the screen out loud, and describes it in text for screen readers "
                "like NVDA. Choose how much it says.";
+    case INSTALL:
+        return "AREOS can't write to a disk yet, so nothing here changes your computer. "
+               "Later you'll pick a disk and partitions here.";
     default:
         return "The fourth OS is ready. Press Start to go to your desktop.";
     }
@@ -298,7 +308,8 @@ void setup_draw(void) {
     // "Step 3 of 6" and a progress bar.
     char step[16] = "Step ";
     text_append_number(step, (int)page + 1, sizeof(step));
-    text_append(step, " of 6", sizeof(step));
+    text_append(step, " of ", sizeof(step));
+    text_append_number(step, PAGE_COUNT, sizeof(step));
     gui_text(&screen, x + 48, y + 38, step, theme->text_dim, 2);
     int bar_x = x + 48 + gui_text_width(step, 2) + 32, bar_w = CARD_W - 96 - gui_text_width(step, 2) - 32;
     gui_rounded(&screen, bar_x, y + 48, bar_w, 8, 4, theme->panel_border);
@@ -307,6 +318,15 @@ void setup_draw(void) {
     if (page == WELCOME) icon_draw(&screen, ICON_LOGO, x + CARD_W - 48 - 120, y + 90, 120);
     gui_text_bold(&screen, x + 48, y + 96, title(), theme->accent, 3);
     gui_text_wrapped(&screen, x + 48, y + 170, page == WELCOME ? CARD_W - 260 : CARD_W - 96, body(), theme->text, 2);
+
+    if (page == INSTALL) {   // a preview of where partitions will go; it does nothing yet
+        int py = y + 440;
+        gui_text(&screen, x + 48, py, "Disk: none detected yet", theme->text_dim, 2);
+        int bx = x + 48, bw = CARD_W - 96;
+        gui_rounded(&screen, bx, py + 36, bw / 8, 14, 4, theme->panel_border);
+        gui_rounded(&screen, bx + bw / 8 + 6, py + 36, bw / 2, 14, 4, theme->panel_border);
+        gui_rounded(&screen, bx + bw / 8 + bw / 2 + 12, py + 36, bw - bw / 8 - bw / 2 - 12, 14, 4, theme->panel_border);
+    }
 
     if (page == DONE && user_name[0] != '\0') {
         char greeting[64] = "Welcome aboard, ";

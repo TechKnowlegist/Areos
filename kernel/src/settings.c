@@ -2,7 +2,8 @@
 
 #include "settings.h"
 
-static uint64_t values[SETTINGS_COUNT];  // all start at 0
+// Everything starts at 0, except the voice: 3 is Kal, the classic robot.
+static uint64_t values[SETTINGS_COUNT] = { [SETTING_SPEECH_VOICE] = 3 };
 
 bool settings_get(uint64_t id, uint64_t *value) {
     if (id >= SETTINGS_COUNT) {
