@@ -122,6 +122,23 @@ The built-in console font is a bitmap rendering of [DejaVu Sans Mono](https://de
 - stb_truetype (page fonts): public domain, `apps/desktop/stb_truetype.h`.
 - Liberation fonts (page text): SIL Open Font License 1.1. DejaVu Sans (symbols): Bitstream Vera / DejaVu licence. Both in `apps/desktop/fonts/`.
 
+## Working from Windows (no Linux needed)
+
+Everything for this is in `tools/windows/`. GitHub builds the disc image for you, so the laptop only needs Git and QEMU.
+
+One-time setup (PowerShell; the winget lines may ask for admin approval):
+
+    winget install Git.Git
+    winget install SoftwareFreedomConservancy.QEMU
+    git clone https://github.com/TechKnowlegist/areos.git
+
+Every time after that:
+
+- `.\tools\windows\push.ps1` unpacks a new `areos-*.tar.gz` from Downloads (if there is one), commits with the message "Made changes" (or your own: `push.ps1 "message"`) and pushes. GitHub then builds the ISO, which takes about two minutes.
+- `.\tools\windows\update-areos.ps1` downloads the newest build and starts it in QEMU. It skips the download if you already have that build.
+
+The build recipe is `.github/workflows/build.yml`. It publishes every build as the release called "latest".
+
 ## Files and Notes (in-memory file system)
 
 **Files** (launcher or desktop icon) is a file manager. You can make folders and documents, rename and delete them, and open documents in Notes. Everything lives in memory for now: it stays while AREOS is on and is gone after a restart (saving to disk comes later).

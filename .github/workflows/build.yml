@@ -1,0 +1,49 @@
+# Builds the AREOS disc image every time something is pushed, and publishes it
+# as the "latest" release so tools/windows/update-areos.ps1 can fetch it.
+name: Build AREOS
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-areos
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install the build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential nasm xorriso mtools gdisk curl
+
+      - name: Build
+        run: make
+
+      - name: Keep a copy with the run
+        uses: actions/upload-artifact@v4
+        with:
+          name: areos-x86_64.iso
+          path: areos-x86_64.iso
+          retention-days: 14
+
+      - name: Publish as the latest release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          STAMP="$(date -u +'%Y-%m-%d %H:%M UTC')"
+          SHORT="${GITHUB_SHA::7}"
+          MESSAGE="$(git log -1 --pretty=%s)"
+          gh release delete latest --cleanup-tag --yes || true
+          gh release create latest areos-x86_64.iso \
+            --title "AREOS latest (${SHORT}, ${STAMP})" \
+            --notes "Built from ${SHORT}: ${MESSAGE}" \
+            --target "${GITHUB_SHA}"
