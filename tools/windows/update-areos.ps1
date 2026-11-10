@@ -4,11 +4,13 @@
 #     .\update-areos.ps1
 # Options:
 #     -NoRun      only download, don't start QEMU
+#     -WindowsQemu  use the Windows QEMU even if QEMU is installed in WSL
 #     -Iso PATH   start a disc image you already have, don't download
 #     -Repo NAME  another GitHub repository (default TechKnowlegist/areos)
 
 param(
     [switch]$NoRun,
+    [switch]$WindowsQemu,
     [string]$Iso,
     [string]$Repo = "TechKnowlegist/areos"
 )
@@ -52,6 +54,29 @@ if (-not $Iso) {
 }
 
 if ($NoRun) { Write-Host "Done."; exit 0 }
+
+# On a Snapdragon (ARM) laptop the Windows build of QEMU can crash, so if QEMU is
+# installed inside WSL (Ubuntu), use that one: it runs natively and the window
+# still opens on your Windows desktop.
+if (-not $WindowsQemu -and (Get-Command wsl.exe -ErrorAction SilentlyContinue)) {
+    $ErrorActionPreference = "Continue"
+    wsl.exe -e sh -c "command -v qemu-system-x86_64" *> $null
+    if ($LASTEXITCODE -eq 0) {
+        $linuxIso = ("$(wsl.exe wslpath -a $Iso)").Trim()
+        $helpText = (wsl.exe -e qemu-system-x86_64 -audiodev help 2>&1 | Out-String)
+        $wslArgs = @("-M", "q35", "-m", "2G", "-cdrom", $linuxIso, "-boot", "d",
+                     "-rtc", "base=localtime", "-nic", "user,model=e1000", "-accel", "tcg")
+        if ($helpText -match "(?m)^\s*pa\s*$") {
+            $wslArgs += @("-audiodev", "pa,id=sound", "-device", "AC97,audiodev=sound")
+        } else {
+            Write-Host "No sound driver in WSL's QEMU, so AREOS will start without sound."
+        }
+        Write-Host "Starting AREOS (QEMU inside WSL)..."
+        wsl.exe -e qemu-system-x86_64 @wslArgs
+        exit
+    }
+    $ErrorActionPreference = "Stop"
+}
 
 # Find QEMU
 $qemu = $null
